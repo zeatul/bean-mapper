@@ -1,0 +1,25 @@
+# 定义为根配置文件
+# 控制 .editorconfig 是否生效的字段
+root = true
+
+# 通用设置，适用于所有文件
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true # 文件末尾添加空行
+trim_trailing_whitespace = true # 删除行尾空格
+indent_style = space # 空格缩进
+indent_size = 4 # 4空格
+# indent_style = tab    # Tab缩进
+# tab_width = 4         # Tab宽度
+
+# 针对特定文件类型的设置
+[*.java]
+max_line_length = 180
+
+# [*.{json,yml}]
+# indent_size = 2
+#
+# # 排除文件
+# [{package.json,.gitignore}]
+# indent_style = tab

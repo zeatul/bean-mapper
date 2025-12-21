@@ -1,0 +1,23 @@
+# 全局设置
+* text=auto eol=lf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jar binary
+*.zip binary
+
+# Windows 特殊文件
+*.bat eol=crlf
+*.cmd eol=crlf
+
+# 文档文件
+*.md text
+*.txt text
+*.java text
+*.properties text
+*.json text
+*.xml text
+
+# 脚本文件
+*.sh text eol=lf

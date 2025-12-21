@@ -1,0 +1,30 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+rootProject.name = 'bean-mapper'
+
+include 'bean-mapper-annotations'
+include 'bean-mapper-processor'
+include 'bean-mapper-sample'
+
+dependencyResolutionManagement {
+
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            name = 'Central Portal Snapshots'
+            url = 'https://central.sonatype.com/repository/maven-snapshots/'
+        }
+    }
+}
+
+

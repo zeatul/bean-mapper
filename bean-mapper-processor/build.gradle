@@ -1,0 +1,11 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+dependencies {
+    implementation 'io.github.zeatul:hawk-core'
+    implementation project(':bean-mapper-annotations')
+    implementation 'io.github.zeatul:codepoet-core'
+    implementation 'io.github.zeatul:javapoet-pro'
+    implementation 'org.springframework:spring-context'
+}

@@ -1,0 +1,17 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+dependencies {
+    implementation 'org.springframework:spring-context'
+    implementation project(':bean-mapper-annotations')
+    annotationProcessor project(':bean-mapper-processor')
+}
+
+
+compileJava {
+      // enable remote debug
+//    options.fork = true
+//    options.forkOptions.jvmArgs += ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=9000']
+//    options.debug = true
+}

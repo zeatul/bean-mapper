@@ -1,0 +1,84 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id 'signing'
+}
+
+
+java {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    }
+
+    withJavadocJar() //with java doc
+    withSourcesJar() //with java source
+}
+
+dependencies {
+    implementation(platform("io.github.zeatul:hawk-bom:1.0.0-SNAPSHOT"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.assertj:assertj-core")
+    testImplementation("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.addStringOption('Xdoclint:-missing', '-quiet')
+    options.encoding = 'utf-8'
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:-options"
+    // options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
+    // sourceCompatibility = "${JavaVersion.VERSION_1_8}"
+    // targetCompatibility = "${JavaVersion.VERSION_1_8}"
+}
+
+publishing {
+    publications {
+        myLibrary(MavenPublication) {
+            from components.java
+            project.afterEvaluate {
+                pom {
+                    name = project.name
+                    description = project.description
+                    url = 'https://github.com/zeatul/bean-mapper'
+                    licenses {
+                        license {
+                            name = 'Apache-2.0'
+                            url = 'https://opensource.org/licenses/Apache-2.0'
+                        }
+                    }
+                    developers {
+                        developer {
+                            name = 'Hawk'
+                            email = 'zeatul@qq.com'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:git://github.com/zeatul/bean-mapper.git'
+                        developerConnection = 'scm:git:ssh://github.com/zeatul/bean-mapper.git'
+                        url = 'https://github.com/zeatul/bean-mapper.git'
+                    }
+                }
+            }
+        }
+    }
+
+    // The repository for publications is defined in the init.gradle file.
+    repositories {
+        mavenLocal()
+    }
+}
+
+signing {
+    required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") }
+    sign publishing.publications.myLibrary
+}
+
