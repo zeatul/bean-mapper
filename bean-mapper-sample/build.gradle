@@ -8,6 +8,11 @@ dependencies {
     annotationProcessor project(':bean-mapper-processor')
 }
 
+description = 'This project provides some samples for bean mapper'
+
+//compileJava {
+//    options.compilerArgs << '-processor' << 'lombok.launch.AnnotationProcessorHider$AnnotationProcessor,org.mapstruct.ap.MappingProcessor'
+//}
 
 compileJava {
       // enable remote debug

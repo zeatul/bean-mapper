@@ -32,7 +32,7 @@ class PropertyDescriptor {
 
     PropertyDescriptor(String parentFullPath, String propertyNam) {
         this.propertyNam = propertyNam;
-        this.fullPath = parentFullPath + "/" + propertyNam;
+        this.fullPath = parentFullPath + "." + propertyNam;
     }
 
     void add(GetterDescriptor getterDescriptor) {

@@ -29,6 +29,18 @@ public class BookUpdate {
     private Integer recordVersion;
     private String isbn;
     private String description;
+    private String a;
+    private String localDateStr;
+    public String localDateStr1;
+
+    public String getA() {
+        return a;
+    }
+
+    public void setA(String a) {
+        this.a = a;
+    }
+
 
     public BigInteger getBookId() {
         return bookId;
@@ -76,5 +88,13 @@ public class BookUpdate {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getLocalDateStr() {
+        return localDateStr;
+    }
+
+    public void setLocalDateStr(String localDateStr) {
+        this.localDateStr = localDateStr;
     }
 }

@@ -16,6 +16,8 @@
 
 package glz.hawk.bean.mapper.sample.beans;
 
+import java.math.BigInteger;
+
 /**
  * This class is responsible for
  *
@@ -24,9 +26,13 @@ package glz.hawk.bean.mapper.sample.beans;
 public class BookExPo {
     private String isbn;
     private String description;
+    private BigInteger bookId;
+    private String bookName;
+
+    private String a2;
 
     public String getIsbn() {
-        return isbn;
+        return this.isbn;
     }
 
     public void setIsbn(String isbn) {
@@ -34,10 +40,34 @@ public class BookExPo {
     }
 
     public String getDescription() {
-        return description;
+        return this.description;
     }
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public BigInteger getBookId() {
+        return this.bookId;
+    }
+
+    public void setBookId(BigInteger bookId) {
+        this.bookId = bookId;
+    }
+
+    public String getBookName() {
+        return this.bookName;
+    }
+
+    public void setBookName(String bookName) {
+        this.bookName = bookName;
+    }
+
+    public String getA2() {
+        return this.a2;
+    }
+
+    public void setA2(String a2) {
+        this.a2 = a2;
     }
 }

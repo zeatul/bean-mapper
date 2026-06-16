@@ -16,25 +16,32 @@
 
 package glz.hawk.bean.mapper.annotation;
 
-
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * This annotation is responsible for providing some mapping rules.
- * <p> the last parameter which isn't annotated with @MappingSource will be chosen as the mapping target, if the return type of method is void. </p>
- * <p>The parameter annotated by {@link MappingSource} shouldn't be annotated by {@link MappingTarget}.</p>
+ * 这个注解用来注入bean供转换代码引用
+ *
  * @author Zhang Peng
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.PARAMETER})
-public @interface MappingSource {
-    boolean nullable() default false;
+@Target({})
+public @interface AutowiredBean {
+    /**
+     * 注入的bean的类的全名
+     */
+    String type() default "";
 
     /**
-     * 是否导出全部field
-     * <p>是，导出全部，除了{@link PropertyMapping}指定忽略的部分</p>
-     * <p>不是，只导出{@link PropertyMapping}指定导入的部分</p>
+     * 对应于Spring Framework的@Qualifier注解
      */
-    boolean includeAll() default true;
+    String[] qualifier() default {};
+
+    /**
+     * 注入的bean对应的field名称，不填取小写首字母的类名
+     */
+    String fieldName() default "";
 }

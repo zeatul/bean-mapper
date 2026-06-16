@@ -16,12 +16,14 @@
 
 package glz.hawk.bean.mapper.processor;
 
+import glz.hawk.bean.mapper.annotation.AutowiredBean;
 import glz.hawk.bean.mapper.annotation.BeanMapper;
-import glz.hawk.codepoet.java.AnnotationInstanceSpec;
-import glz.hawk.codepoet.java.ClassSpec;
-import glz.hawk.codepoet.java.JavaFile;
+import glz.hawk.codepoet.java.*;
 import glz.hawk.codepoet.java.type.ClassName;
 import glz.hawk.codepoet.java.type.TypeNameHelper;
+import glz.hawkframework.core.helper.StringHelper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -72,18 +74,18 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
                     throw new IllegalStateException("Inner class is unsupported. Current type is " + typeElement);
                 }
 
-                BeanMapper objectMapper = typeElement.getAnnotation(BeanMapper.class);
+                BeanMapper beanMapper = typeElement.getAnnotation(BeanMapper.class);
 
                 final String mapperClassPackage = elementUtils.getPackageOf(typeElement).getQualifiedName().toString();
                 final String mapperClassName = typeElement.getSimpleName().toString();
 
-                final String mapperImplClassPackage = ClassUtils.instance(ClassUtils.getFunctionClass(objectMapper::implClassPackageGeneratorClass)).apply(mapperClassPackage);
-                final String mapperImplClassName = ClassUtils.instance(ClassUtils.getFunctionClass(objectMapper::implClassNameGeneratorClass)).apply(mapperClassName);
+                final String mapperImplClassPackage = ClassUtils.instance(ClassUtils.getFunctionClass(beanMapper::implClassPackageGeneratorClass)).apply(mapperClassPackage);
+                final String mapperImplClassName = ClassUtils.instance(ClassUtils.getFunctionClass(beanMapper::implClassNameGeneratorClass)).apply(mapperClassName);
 
                 ClassSpec.Builder builder = ClassSpec.builder(mapperImplClassName, Modifier.PUBLIC)
                     .addSuperInterface(ClassName.of(typeElement));
 
-                switch (objectMapper.componentModel()) {
+                switch (beanMapper.componentModel()) {
                     case DEFAULT:
                         // do nothing
                         break;
@@ -105,16 +107,28 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
                         builder.addAnnotation(AnnotationInstanceSpec.builder(ClassName.of("jakarta.enterprise.context", "ApplicationScoped")).build());
                         break;
                     default:
-                        throw new IllegalStateException("Unsupported ComponentMode: " + objectMapper.componentModel().name());
+                        throw new IllegalStateException("Unsupported ComponentMode: " + beanMapper.componentModel().name());
                 }
 
                 typeElement.getEnclosedElements()
                     .stream()
                     .filter(e -> e.getKind() == ElementKind.METHOD)
                     .map(e -> (ExecutableElement) e)
+                    .filter(e -> !(e.getModifiers().contains(Modifier.STATIC) || e.isDefault()))
                     .map(e -> new MethodBuilder(typeUtils, elementUtils, messager, mapperClassName, e))
                     .map(MethodBuilder::build)
                     .forEach(builder::addMethod);
+
+                // 注入bean
+                for (AutowiredBean autowiredBean : beanMapper.autowiredBeans()) {
+                    builder.addField(buildAutowiredBeanField(autowiredBean));
+                }
+
+                // 静态引用
+                for (String staticImport : beanMapper.staticImports()) {
+                    if (StringHelper.isEmpty(staticImport)) throw new IllegalStateException("Static Import is empty");
+                    builder.addStaticImport(staticImport);
+                }
 
                 JavaFile javaFile = JavaFile.builder(mapperImplClassPackage, builder.build()).build();
                 javaFile.writeTo(filer);
@@ -122,5 +136,18 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
 
         messager.printMessage(Diagnostic.Kind.NOTE, "Finished BeanMapperAnnotationProcessor...");
         return true;
+    }
+
+    FieldSpec buildAutowiredBeanField(AutowiredBean autowiredBean) {
+        ClassName className = ClassName.ofGuess(autowiredBean.type());
+        String fieldName = StringHelper.isNotBlank(autowiredBean.fieldName()) ? autowiredBean.fieldName()
+            : StringHelper.unCapitalize(className.simpleName());
+        FieldSpec.Builder builder = FieldSpec.builder(className, fieldName, Modifier.PRIVATE);
+        builder.addAnnotation(Autowired.class);
+        for (String qualifier : autowiredBean.qualifier()) {
+            builder.addAnnotation(AnnotationInstanceSpec.builder(Qualifier.class).addMember("value", qualifier).build());
+        }
+        return builder.build();
+
     }
 }

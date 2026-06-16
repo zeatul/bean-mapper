@@ -24,12 +24,11 @@ import java.lang.annotation.*;
  * <p>Only one parameter can be annotated by {@link MappingTarget}.</p>
  * <p>The parameter annotated by {@link MappingTarget} shouldn't be annotated by {@link MappingSource}.</p>
  *
- *
  * @author Zhang Peng
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.PARAMETER,ElementType.METHOD})
+@Target({ElementType.PARAMETER, ElementType.METHOD})
 public @interface MappingTarget {
 
     /**
@@ -38,4 +37,11 @@ public @interface MappingTarget {
     String returnObjectName() default "";
 
     boolean nullable() default false;
+
+    /**
+     * 是否接受全部field
+     * <p>是，接受全部，除了{@link PropertyMapping}指定忽略的部分</p>
+     * <p>不是，只接受{@link PropertyMapping}指定导入的部分</p>
+     */
+    boolean includeAll() default true;
 }

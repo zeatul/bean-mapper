@@ -35,11 +35,6 @@ import java.util.function.Function;
 public @interface BeanMapper {
 
     /**
-     * If the value of this attribute is {@code true}, the field copying will be executed recursively
-     */
-    boolean deepCopy() default false;
-
-    /**
      * The instance of {@code implClassPackageGeneratorClass} will be used to generate the package of mapper implementation class.
      */
     Class<? extends Function<String, String>> implClassPackageGeneratorClass() default DefaultImplClassPackageGenerator.class;
@@ -77,5 +72,7 @@ public @interface BeanMapper {
     /**
      * This attribute provides the static imports for the code generator, If the code use static method to convert the source to the target.
      */
-    String[] staticImports() default{};
+    String[] staticImports() default {};
+
+    AutowiredBean[] autowiredBeans() default {};
 }

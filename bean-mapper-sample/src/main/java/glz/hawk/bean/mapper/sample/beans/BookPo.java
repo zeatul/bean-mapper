@@ -27,9 +27,13 @@ public class BookPo {
     private String bookName;
     private LocalDate publishDate;
     private Integer recordVersion;
+    private String a1;
+    private LocalDate localDate;
+
+    public LocalDate localDate1;
 
     public BigInteger getBookId() {
-        return bookId;
+        return this.bookId;
     }
 
     public void setBookId(BigInteger bookId) {
@@ -37,7 +41,7 @@ public class BookPo {
     }
 
     public String getBookName() {
-        return bookName;
+        return this.bookName;
     }
 
     public void setBookName(String bookName) {
@@ -45,7 +49,7 @@ public class BookPo {
     }
 
     public LocalDate getPublishDate() {
-        return publishDate;
+        return this.publishDate;
     }
 
     public void setPublishDate(LocalDate publishDate) {
@@ -53,10 +57,34 @@ public class BookPo {
     }
 
     public Integer getRecordVersion() {
-        return recordVersion;
+        return this.recordVersion;
     }
 
     public void setRecordVersion(Integer recordVersion) {
         this.recordVersion = recordVersion;
+    }
+
+    public String getA1() {
+        return this.a1;
+    }
+
+    public void setA1(String a1) {
+        this.a1 = a1;
+    }
+
+    public LocalDate getLocalDate() {
+        return this.localDate;
+    }
+
+    public void setLocalDate(LocalDate localDate) {
+        this.localDate = localDate;
+    }
+
+    public LocalDate getLocalDate1() {
+        return this.localDate1;
+    }
+
+    public void setLocalDate1(LocalDate localDate1) {
+        this.localDate1 = localDate1;
     }
 }

@@ -2,6 +2,8 @@ plugins {
     id 'buildlogic.java-library-conventions'
 }
 
+description = 'This project provides the annotations for bean mapper'
+
 dependencies {
     implementation 'io.github.zeatul:hawk-core'
 }

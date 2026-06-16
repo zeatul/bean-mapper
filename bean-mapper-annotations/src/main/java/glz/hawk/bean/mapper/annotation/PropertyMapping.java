@@ -38,7 +38,7 @@ public @interface PropertyMapping {
      * the property name must be qualified with the parameter name, e.g. "addressParam.city".</p>
      * <p>If this attribute's value is empty, use the value of {@link #target()}</p>
      */
-    String source();
+    String source() default "";
 
     /**
      * The target name of the configured property as defined by the JavaBeans specification.

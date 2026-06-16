@@ -36,12 +36,15 @@ import static glz.hawkframework.core.helper.StringHelper.unCapitalize;
 
 /**
  * This class is responsible for
+ * <p>描述方法参数</p>
  *
  * @author Hawk
  */
-class ObjectDescriptor implements Comparable<ObjectDescriptor> {
-
-    public final String objectName;
+class ParamDescriptor implements Comparable<ParamDescriptor> {
+    /**
+     * 参数名
+     */
+    public final String paramName;
     public final MappingSource mappingSource;
     public final MappingTarget mappingTarget;
     public final Integer index;
@@ -51,20 +54,26 @@ class ObjectDescriptor implements Comparable<ObjectDescriptor> {
      */
     public final boolean definedByReturnType;
     /**
-     * TODO: 记录对象的全路径,从参数名开始计算
+     * 参数全路径,从参数名开始计算
      */
-    public final String objectFullPath;
+    public final String paramFullPath;
+    /**
+     * 方法全路径，从interface开始计算
+     */
     public final String methodFullPath;
     private final Types typeUtils;
     private final Elements elementUtils;
     private final Messager messager;
 
+    /**
+     * key为field的name
+     */
     public Map<String, PropertyDescriptor> propertyDescriptorMap = new HashMap<>();
 
     /**
      * parse the return type of method
      */
-    ObjectDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, ExecutableElement methodElement) {
+    ParamDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, ExecutableElement methodElement) {
         this.typeUtils = typeUtils;
         this.elementUtils = elementUtils;
         this.messager = messager;
@@ -72,10 +81,10 @@ class ObjectDescriptor implements Comparable<ObjectDescriptor> {
         this.mappingTarget = methodElement.getAnnotation(MappingTarget.class);
         this.typeMirror = methodElement.getReturnType();
         this.methodFullPath = String.join("/", interfaceName, methodName);
-        this.objectFullPath = "methodReturn";
+        this.paramFullPath = "methodReturn";
 
-        parseTypeMirror(typeMirror, this.objectFullPath);
-        this.objectName = returnObjectName();
+        parseTypeMirror(typeMirror, this.paramFullPath);
+        this.paramName = returnObjectName();
         this.index = 0;
         this.definedByReturnType = true;
 
@@ -85,23 +94,23 @@ class ObjectDescriptor implements Comparable<ObjectDescriptor> {
     /**
      * parse the parameter of method
      */
-    ObjectDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, VariableElement parameterElement, int index, String parentFullPath) {
+    ParamDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, VariableElement parameterElement, int index, String parentFullPath) {
         this.typeUtils = typeUtils;
         this.elementUtils = elementUtils;
         this.messager = messager;
-        this.objectName = parameterElement.getSimpleName().toString();
+        this.paramName = parameterElement.getSimpleName().toString();
         this.typeMirror = parameterElement.asType();
         this.index = index;
         this.definedByReturnType = false;
         this.methodFullPath = String.join("/", interfaceName, methodName);
-        this.objectFullPath = parentFullPath == null ? objectName : String.join(".", parentFullPath, objectName);
+        this.paramFullPath = parentFullPath == null ? paramName : String.join(".", parentFullPath, paramName);
 
-        parseTypeMirror(typeMirror, this.objectFullPath);
+        parseTypeMirror(typeMirror, this.paramFullPath);
 
         this.mappingSource = parameterElement.getAnnotation(MappingSource.class);
         this.mappingTarget = parameterElement.getAnnotation(MappingTarget.class);
         if (mappingSource != null && mappingTarget != null) {
-            throw new IllegalStateException(String.format("The parameter(%s) in the method(%s) can't be annotated %s and %s in the same time.", objectFullPath, methodFullPath, MappingSource.class.getSimpleName(), MappingTarget.class.getSimpleName()));
+            throw new IllegalStateException(String.format("The parameter(%s) in the method(%s) can't be annotated %s and %s in the same time.", paramFullPath, methodFullPath, MappingSource.class.getSimpleName(), MappingTarget.class.getSimpleName()));
         }
     }
 
@@ -205,7 +214,7 @@ class ObjectDescriptor implements Comparable<ObjectDescriptor> {
 
 
     @Override
-    public int compareTo(ObjectDescriptor o) {
+    public int compareTo(ParamDescriptor o) {
         return this.index.compareTo(o.index);
     }
 

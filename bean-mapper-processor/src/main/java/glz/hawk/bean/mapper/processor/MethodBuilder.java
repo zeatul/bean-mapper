@@ -16,16 +16,19 @@
 
 package glz.hawk.bean.mapper.processor;
 
+import glz.hawk.bean.mapper.annotation.Converter;
 import glz.hawk.bean.mapper.annotation.ConverterParam;
 import glz.hawk.bean.mapper.annotation.ElementConverter;
-import glz.hawk.codepoet.java.type.*;
-import glz.hawkframework.core.helper.MapHelper;
-import glz.hawkframework.core.helper.StringHelper;
+import glz.hawk.bean.mapper.annotation.PropertyMapping;
 import glz.hawk.codepoet.java.MethodSpec;
 import glz.hawk.codepoet.java.ParameterSpec;
 import glz.hawk.codepoet.java.javacode.ComplexJavaCodeBlockBuilder;
 import glz.hawk.codepoet.java.javacode.ForFlow;
+import glz.hawk.codepoet.java.javacode.IfFlow;
+import glz.hawk.codepoet.java.type.*;
+import glz.hawkframework.core.helper.StringHelper;
 
+import javax.annotation.Nullable;
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -47,15 +50,29 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotBlank;
  */
 class MethodBuilder {
     private final ExecutableElement executableElement;
+
     private final List<? extends VariableElement> variableElementList;
+
     private final String methodName;
+
     private final String interfaceName;
+
     private final TypeMirror returnTypeMirror;
+
     private final TypeName returnType;
+
     private final Types typeUtils;
+
     private final Elements elementUtils;
+
     private final Messager messager;
+
     private final String methodFullPath;
+
+    /**
+     * key是targetProperty的全路径：参数名+属性全路径
+     */
+    private final Map<String, ParamPropertyMapping> targetPropertyMappingMap = new HashMap<>();
 
     public MethodBuilder(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, ExecutableElement executableElement) {
         this.interfaceName = interfaceName;
@@ -68,6 +85,7 @@ class MethodBuilder {
         this.elementUtils = elementUtils;
         this.messager = messager;
         this.methodFullPath = String.join("/", interfaceName, methodName);
+
     }
 
     public MethodSpec build() {
@@ -79,22 +97,22 @@ class MethodBuilder {
         int paramCount = variableElementList.size();
         if (returnType == VoidTypeName.VOID) {
             if (paramCount < 2) {
-                throw new IllegalStateException(String.format("The method(%s) without return type must hava at least 2 parameters", methodFullPath));
+                throw new IllegalStateException(String.format("The method(%s) without return type must have at least 2 parameters", methodFullPath));
             }
         } else {
             if (paramCount < 1) {
-                throw new IllegalStateException(String.format("The method(%s) without return type must hava at least 1 parameters", methodFullPath));
+                throw new IllegalStateException(String.format("The method(%s) without return type must have at least 1 parameters", methodFullPath));
             }
         }
 
-        List<ObjectDescriptor> allParameterDescriptors = new ArrayList<>();
+        List<ParamDescriptor> allParameterDescriptors = new ArrayList<>();
         for (int i = 0; i < variableElementList.size(); i++) {
-            allParameterDescriptors.add(new ObjectDescriptor(typeUtils, elementUtils, messager, interfaceName, methodName, variableElementList.get(i), i, null));
+            allParameterDescriptors.add(new ParamDescriptor(typeUtils, elementUtils, messager, interfaceName, methodName, variableElementList.get(i), i, null));
         }
 
-        List<ObjectDescriptor> annotatedByMappingSourceList = new ArrayList<>();
-        List<ObjectDescriptor> annotatedByMappingTargetList = new ArrayList<>();
-        List<ObjectDescriptor> annotatedByNoneList = new ArrayList<>();
+        List<ParamDescriptor> annotatedByMappingSourceList = new ArrayList<>();
+        List<ParamDescriptor> annotatedByMappingTargetList = new ArrayList<>();
+        List<ParamDescriptor> annotatedByNoneList = new ArrayList<>();
         allParameterDescriptors.forEach(pd -> {
             if (pd.mappingTarget != null) {
                 annotatedByMappingTargetList.add(pd);
@@ -105,16 +123,17 @@ class MethodBuilder {
             }
         });
 
+        // 获取输入参数和输出参数
         // The item in this list is support to export properties.
-        List<ObjectDescriptor> sourceParameterDescriptorList = new ArrayList<>();
+        List<ParamDescriptor> sourceParameterDescriptorList = new ArrayList<>();
         // The item in this list is support to import properties.
-        List<ObjectDescriptor> targetParameterDescriptorList = new ArrayList<>();
+        List<ParamDescriptor> targetParameterDescriptorList = new ArrayList<>();
 
         if (annotatedByMappingTargetList.size() > 1) {
             // only one parameter can be annotated with @MappingTarget
             throw new IllegalStateException(String.format("At most one method(%s) parameter may be annotated with @MappingTarget.", methodFullPath));
         } else if (annotatedByMappingTargetList.size() == 1) {
-            ObjectDescriptor p = annotatedByMappingTargetList.get(0);
+            ParamDescriptor p = annotatedByMappingTargetList.get(0);
             if (isVoid(returnTypeMirror) || typeUtils.isAssignable(returnTypeMirror, p.typeMirror)) {
                 targetParameterDescriptorList.add(p);
                 sourceParameterDescriptorList.addAll(annotatedByMappingSourceList);
@@ -122,7 +141,7 @@ class MethodBuilder {
                 Collections.sort(sourceParameterDescriptorList);
             } else {
                 throw new IllegalStateException(String.format("The parameter(%s) is annotated by @MappingTarget and will work as the return object, but the return type of method(%s) is incompatible with the parameter.",
-                    p.objectFullPath, methodFullPath));
+                    p.paramFullPath, methodFullPath));
             }
         } else {
             if (isVoid(returnTypeMirror)) {
@@ -142,7 +161,7 @@ class MethodBuilder {
                 sourceParameterDescriptorList.addAll(annotatedByNoneList);
                 Collections.sort(sourceParameterDescriptorList);
                 // the return type of method works as the mapping target.
-                targetParameterDescriptorList.add(new ObjectDescriptor(typeUtils, elementUtils, messager, interfaceName, methodName, executableElement));
+                targetParameterDescriptorList.add(new ParamDescriptor(typeUtils, elementUtils, messager, interfaceName, methodName, executableElement));
             }
         }
 
@@ -150,14 +169,101 @@ class MethodBuilder {
             throw new IllegalStateException(String.format("Cant' find any source parameter in the method(%s)", methodFullPath));
         }
 
+        // 获取自定义的属性映射
+        PropertyMapping[] mappings = executableElement.getAnnotationsByType(PropertyMapping.class);
+
+        for (PropertyMapping mapping : mappings) {
+            // source和target至少一个不能为空
+            if (StringHelper.isBlank(mapping.source()) && StringHelper.isBlank(mapping.target())) {
+                String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has no source and no target.", methodName, interfaceName);
+                messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                throw new IllegalStateException(msg);
+            }
+            // 只有一个source的情况下，source不带参数名，否则带
+            String source = mapping.source();
+            // target不带参数名
+            String target = mapping.target();
+
+            // 当前不支持级联属性
+            if (target.split("\\.").length != 1) {
+                String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has illegal target. The target must be like [propertyName]", methodName, interfaceName);
+                messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                throw new IllegalStateException(msg);
+            }
+
+            if (sourceParameterDescriptorList.size() > 1) {
+                if (StringHelper.isBlank(source) && !mapping.ignore()) {
+                    String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has no source.", methodName, interfaceName);
+                    messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                    throw new IllegalStateException(msg);
+                }
+                if (StringHelper.isBlank(target)) {
+                    String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has no target.", methodName, interfaceName);
+                    messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                    throw new IllegalStateException(msg);
+                }
+                // 当前不支持级联属性
+                if (source.split("\\.").length != 2 && !mapping.ignore()) {
+                    String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has illegal source. The source must be like [paramName.propertyName]", methodName, interfaceName);
+                    messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                    throw new IllegalStateException(msg);
+                } else {
+                    // source必须是有效的属性名
+                    String paramName = source.split("\\.")[0];
+                    boolean matched = false;
+                    for (ParamDescriptor paramDescriptor : sourceParameterDescriptorList) {
+                        if (paramName.equals(paramDescriptor.paramName)) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched && !mapping.ignore()) {
+                        String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has illegal source. The source must be like [paramName.propertyName] and the paramName must be equal the param name", methodName, interfaceName);
+                        messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                        throw new IllegalStateException(msg);
+                    }
+                }
+            } else {
+                if (StringHelper.isBlank(target)) {
+                    target = source;
+                }
+                if (StringHelper.isBlank(source)) {
+                    source = target;
+                }
+                if (source.split("\\.").length != 1) {
+                    String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation which has illegal source. The source must be like [propertyName]", methodName, interfaceName);
+                    messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                    throw new IllegalStateException(msg);
+                }
+            }
+
+            // 校验target的有效性
+            if (!targetParameterDescriptorList.get(0).propertyDescriptorMap.containsKey(target)) {
+                String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation, illegal target[%s] was found.", methodName, interfaceName, target);
+                messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                throw new IllegalStateException(msg);
+            }
+
+            final String fullTarget = targetParameterDescriptorList.get(0).paramFullPath + "." + target;
+            final String fullSource = sourceParameterDescriptorList.size() == 1 ? sourceParameterDescriptorList.get(0).paramFullPath + "." + source : source;
+
+            if (targetPropertyMappingMap.putIfAbsent(fullTarget, new ParamPropertyMapping(fullSource, fullTarget, mapping.converter(), mapping.ignore())) != null) {
+                String msg = String.format("the method[%s] of interface[%s] has illegal PropertyMapping annotation, duplicated target[%s] was found.", methodName, interfaceName, target);
+                messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                throw new IllegalStateException(msg);
+            }
+        }
+
+        // 获取MappingSource和MappingTarget
+
         methodBuilder.beginMethodBody()
             .addCode(b -> {
-                ObjectDescriptor tpd = targetParameterDescriptorList.get(0);
+                ParamDescriptor tpd = targetParameterDescriptorList.get(0);
                 if (!tpd.definedByReturnType) {
                     if (!tpd.isNullable()) {
                         codeForParamNotNull(b, tpd);
                     } else {
-                        b.beginIf("$L == null", tpd.objectName)
+                        b.beginIf("$L == null", tpd.paramName)
                             .addStatement("return")
                             .endIf();
                     }
@@ -173,7 +279,7 @@ class MethodBuilder {
                 );
 
                 if (allSourceNullable[0]) {
-                    b.beginIf(sourceParameterDescriptorList.stream().map(spd -> spd.objectName + " == null").collect(Collectors.joining(" && ")))
+                    b.beginIf(sourceParameterDescriptorList.stream().map(spd -> spd.paramName + " == null").collect(Collectors.joining(" && ")))
                         .addCode(c -> {
                             if (tpd.definedByReturnType) {
                                 c.addStatement("return null");
@@ -186,20 +292,20 @@ class MethodBuilder {
 
                 if (tpd.definedByReturnType) {
                     if (tpd.isArray()) {
-                        ObjectDescriptor spd = sourceParameterDescriptorList.get(0);
+                        ParamDescriptor spd = sourceParameterDescriptorList.get(0);
                         if (spd.isIterable()) {
-                            b.addStatement("$T $L = new $T[$L.size()]", tpd.typeMirror, tpd.objectName, elementTypeMirror(tpd.typeMirror), spd.objectName);
+                            b.addStatement("$T $L = new $T[$L.size()]", tpd.typeMirror, tpd.paramName, elementTypeMirror(tpd.typeMirror), spd.paramName);
                         } else if (spd.isArray()) {
-                            b.addStatement("$T $L = new $T[$L.length]", tpd.typeMirror, tpd.objectName, elementTypeMirror(tpd.typeMirror), spd.objectName);
+                            b.addStatement("$T $L = new $T[$L.length]", tpd.typeMirror, tpd.paramName, elementTypeMirror(tpd.typeMirror), spd.paramName);
                         } else {
                             throw new IllegalStateException(String.format("The source parameter of method(%s) must be array or collection.", methodFullPath));
                         }
                     } else {
                         TypeName typeName = tpd.isAbstractClassOrInterface() ? concreteTypeName(tpd.typeMirror) : TypeNameHelper.ofTypeMirror(tpd.typeMirror);
                         if (typeName instanceof ParameterizedTypeName) {
-                            b.addStatement("$T $L = new $T<>()", tpd.typeMirror, tpd.objectName, ((ParameterizedTypeName) typeName).rawType);
+                            b.addStatement("$T $L = new $T<>()", tpd.typeMirror, tpd.paramName, ((ParameterizedTypeName) typeName).rawType);
                         } else if (typeName instanceof ClassName) {
-                            b.addStatement("$T $L = new $T()", tpd.typeMirror, tpd.objectName, tpd.typeMirror);
+                            b.addStatement("$T $L = new $T()", tpd.typeMirror, tpd.paramName, tpd.typeMirror);
                         } else {
                             throw new IllegalStateException(String.format("The source parameter of method(%s) must be class or parameterized class.", methodFullPath));
                         }
@@ -208,7 +314,7 @@ class MethodBuilder {
 
                 sourceParameterDescriptorList.forEach(spd -> {
                     if (spd.isNullable() && sourceParameterDescriptorList.size() > 1) {
-                        b.beginIf("$L != null", spd.objectName)
+                        b.beginIf("$L != null", spd.paramName)
                             .addCode(c -> copyProperties(b, spd, tpd))
                             .endIf();
                     } else {
@@ -217,13 +323,23 @@ class MethodBuilder {
                 });
 
                 if (!TypeMirrorUtils.isVoid(returnTypeMirror)) {
-                    b.addStatement("return $L", tpd.objectName);
+                    b.addStatement("return $L", tpd.paramName);
                 }
 
             })
             .end();
 
         return methodBuilder.build();
+    }
+
+    private boolean includeAllSourceProperties(ParamDescriptor paramDescriptor) {
+        if (paramDescriptor.mappingSource == null) return true;
+        return paramDescriptor.mappingSource.includeAll();
+    }
+
+    private boolean includeAllTargetProperties(ParamDescriptor paramDescriptor) {
+        if (paramDescriptor.mappingTarget == null) return true;
+        return paramDescriptor.mappingTarget.includeAll();
     }
 
     private TypeName concreteTypeName(TypeMirror typeMirror) {
@@ -240,11 +356,10 @@ class MethodBuilder {
         } else {
             throw new IllegalStateException(String.format("Can't find the concrete type for the typeMirror(%s)", typeMirror));
         }
-
     }
 
 
-    private void copyProperties(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
+    private void copyProperties(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
         if (spd.isArrayOrIterable() && tpd.isArrayOrIterable()) {
             if (spd.isArray() && tpd.isArray()) {
                 arrayToArray(b, spd, tpd);
@@ -257,10 +372,10 @@ class MethodBuilder {
             }
         } else if (spd.isArrayOrIterable()) {
             messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of source(%s) is array or iterable object, but the target(%s) is not array or iterable object in the method(%s)",
-                spd.objectFullPath, tpd.objectFullPath, methodFullPath));
+                spd.paramFullPath, tpd.paramFullPath, methodFullPath));
         } else if (tpd.isArrayOrIterable()) {
             messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of target(%s) is array or iterable object, but the source(%s) is not array or iterable object in the method(%s)",
-                tpd.objectFullPath, spd.objectFullPath, methodFullPath));
+                tpd.paramFullPath, spd.paramFullPath, methodFullPath));
         } else if (spd.isMap() && tpd.isMap()) {
             mapToMap(b, spd, tpd);
         } else if (spd.isMap()) {
@@ -272,11 +387,32 @@ class MethodBuilder {
         }
     }
 
-    private void executeElementConverter(ForFlow<ComplexJavaCodeBlockBuilder<MethodSpec.Builder>> bb, String initFormat, String source, ObjectDescriptor tpd) {
+    private void executePropertyConverter(IfFlow<ComplexJavaCodeBlockBuilder<MethodSpec.Builder>> bb, String initFormat, Converter converter, String source) {
+        String format = String.format(initFormat, converter.format());
+        List<Object> params = new ArrayList<>();
+        for (ConverterParam p : converter.params()) {
+            switch (p.type()) {
+                case TYPE:
+                    params.add(ClassName.ofGuess(argNotBlank(p.value(), "value")));
+                    break;
+                case SOURCE:
+                    params.add(source);
+                    break;
+                case LITERAL:
+                    params.add(argNotBlank(p.value(), "value"));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported ConverterParamType: " + p.type());
+            }
+        }
+        bb.addStatement(format, params.toArray());
+    }
+
+    private void executeElementConverter(ForFlow<ComplexJavaCodeBlockBuilder<MethodSpec.Builder>> bb, String initFormat, String source, ParamDescriptor tpd) {
         ElementConverter elementConverter = findElementConverter();
         String format = String.format(initFormat, elementConverter.format());
         List<Object> params = new ArrayList<>();
-        params.add(tpd.objectName);
+        params.add(tpd.paramName);
         for (ConverterParam p : elementConverter.params()) {
             switch (p.type()) {
                 case TYPE:
@@ -295,32 +431,32 @@ class MethodBuilder {
         }
     }
 
-    private void arrayToArray(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
-        b.beginFor("int i = 0; i < $L.length; i++", spd.objectName)
-            .addCode(bb -> executeElementConverter(bb, "$L[i] = %s", String.format("%s[i]", spd.objectName), tpd))
+    private void arrayToArray(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
+        b.beginFor("int i = 0; i < $L.length; i++", spd.paramName)
+            .addCode(bb -> executeElementConverter(bb, "$L[i] = %s", String.format("%s[i]", spd.paramName), tpd))
 //            .addStatement("$L[i] = $L($L[i])", tpd.objectName, elementConverterMethodName, spd.objectName)
             .endFor();
     }
 
-    private void arrayToIterable(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
+    private void arrayToIterable(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
 
-        b.beginFor("int i = 0; i < $L.length; i++", spd.objectName)
-            .addCode(bb -> executeElementConverter(bb, "$L.add(%s)", String.format("%s[i]", spd.objectName), tpd))
+        b.beginFor("int i = 0; i < $L.length; i++", spd.paramName)
+            .addCode(bb -> executeElementConverter(bb, "$L.add(%s)", String.format("%s[i]", spd.paramName), tpd))
 //            .addStatement("$L.add($L($L[i]))", tpd.objectName, elementConverterMethodName, spd.objectName)
             .endFor();
     }
 
-    private void iterableToArray(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
-        b.beginFor("int i = 0; i < $L.size(); i++", spd.objectName)
-            .addCode(bb -> executeElementConverter(bb, "$L[i] = %s", String.format("%s.get(i)", spd.objectName), tpd))
+    private void iterableToArray(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
+        b.beginFor("int i = 0; i < $L.size(); i++", spd.paramName)
+            .addCode(bb -> executeElementConverter(bb, "$L[i] = %s", String.format("%s.get(i)", spd.paramName), tpd))
 //            .addStatement("$L[i] = $L($L.get(i))", tpd.objectName, elementConverterMethodName, spd.objectName)
             .endFor();
     }
 
-    private void iterableToIterable(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
+    private void iterableToIterable(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
         TypeMirror elementTypeMirror = elementTypeMirror(spd.typeMirror);
         String elementName = elementName(elementTypeMirror);
-        b.beginFor("$T $L : $L", elementTypeMirror, elementName, spd.objectName)
+        b.beginFor("$T $L : $L", elementTypeMirror, elementName, spd.paramName)
             .addCode(bb -> executeElementConverter(bb, "$L.add(%s)", elementName, tpd))
 //            .addStatement("$L.add($L($L))", tpd.objectName, elementConverterMethodName, elementName)
             .endFor();
@@ -338,20 +474,20 @@ class MethodBuilder {
     }
 
 
-    private void mapToMap(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
+    private void mapToMap(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
         MapMirror s = getMapMirror(typeUtils, spd.typeMirror);
         MapMirror t = getMapMirror(typeUtils, tpd.typeMirror);
         if (typeUtils.isAssignable(s.keyMirror, t.keyMirror) && typeUtils.isAssignable(s.valueMirror, t.valueMirror)) {
-            b.addStatement("$L.putAll($L)", tpd.objectName, spd.objectName);
+            b.addStatement("$L.putAll($L)", tpd.paramName, spd.paramName);
         } else {
-            messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of source(%s) is incompatible with the type of target(%s) in the method(%s).", spd.objectFullPath, tpd.objectFullPath, methodFullPath));
+            messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of source(%s) is incompatible with the type of target(%s) in the method(%s).", spd.paramFullPath, tpd.paramFullPath, methodFullPath));
         }
     }
 
-    private void mapEntriesToProperties(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
+    private void mapEntriesToProperties(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
         MapMirror s = getMapMirror(typeUtils, spd.typeMirror);
         if (!typeUtils.isAssignable(TypeMirrorUtils.classToTypeMirror(String.class, typeUtils, elementUtils), s.keyMirror)) {
-            messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of the source(%s)'s key can't accept String in the method(%s).", spd.objectFullPath, methodFullPath));
+            messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of the source(%s)'s key can't accept String in the method(%s).", spd.paramFullPath, methodFullPath));
             return;
         }
         tpd.propertyDescriptorMap.keySet().forEach(objectName -> {
@@ -362,10 +498,10 @@ class MethodBuilder {
                 }
                 switch (setterDescriptor.setAccessType) {
                     case PUBLIC_METHOD:
-                        b.addStatement("$L.$L($L.get($S))", tpd.objectName, setterDescriptor.setterName, spd.objectName, t.propertyNam);
+                        b.addStatement("$L.$L($L.get($S))", tpd.paramName, setterDescriptor.setterName, spd.paramName, t.propertyNam);
                         break;
                     case PUBLIC_FIEld:
-                        b.addStatement("$L.$L = $L.get($S)", tpd.objectName, setterDescriptor.setterName, spd.objectName, t.propertyNam);
+                        b.addStatement("$L.$L = $L.get($S)", tpd.paramName, setterDescriptor.setterName, spd.paramName, t.propertyNam);
                         break;
                     default:
                         throw new IllegalStateException("Unsupported AccessType: " + setterDescriptor.setAccessType.name());
@@ -374,10 +510,10 @@ class MethodBuilder {
         });
     }
 
-    private void propertiesToMapEntries(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
+    private void propertiesToMapEntries(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
         MapMirror t = getMapMirror(typeUtils, tpd.typeMirror);
         if (!typeUtils.isAssignable(TypeMirrorUtils.classToTypeMirror(String.class, typeUtils, elementUtils), t.keyMirror)) {
-            messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of the target(%s)'s key can't accept String in the method(%s).", spd.objectFullPath, methodFullPath));
+            messager.printMessage(Diagnostic.Kind.WARNING, String.format("The type of the target(%s)'s key can't accept String in the method(%s).", spd.paramFullPath, methodFullPath));
             return;
         }
         spd.propertyDescriptorMap.keySet().forEach(objectName -> {
@@ -388,10 +524,10 @@ class MethodBuilder {
                 }
                 switch (getterDescriptor.getAccessType) {
                     case PUBLIC_METHOD:
-                        b.addStatement("$L.put($S, $L.$L())", tpd.objectName, s.propertyNam, spd.objectName, getterDescriptor.getterName);
+                        b.addStatement("$L.put($S, $L.$L())", tpd.paramName, s.propertyNam, spd.paramName, getterDescriptor.getterName);
                         break;
                     case PUBLIC_FIEld:
-                        b.addStatement("$L.put($S, $L.$L)", tpd.objectName, s.propertyNam, spd.objectName, getterDescriptor.getterName);
+                        b.addStatement("$L.put($S, $L.$L)", tpd.paramName, s.propertyNam, spd.paramName, getterDescriptor.getterName);
                         break;
                     default:
                         throw new IllegalStateException("Unsupported AccessType: " + getterDescriptor.getAccessType.name());
@@ -400,28 +536,38 @@ class MethodBuilder {
         });
     }
 
-    private void propertiesToProperties(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor spd, ObjectDescriptor tpd) {
-        spd.propertyDescriptorMap.keySet().forEach(objectName -> {
-            PropertyDescriptor s = spd.propertyDescriptorMap.get(objectName);
+    private void propertiesToProperties(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor spd, ParamDescriptor tpd) {
+        tpd.propertyDescriptorMap.keySet().forEach(objectName -> {
             PropertyDescriptor t = tpd.propertyDescriptorMap.get(objectName);
-            Map<GetterDescriptor, SetterDescriptor> found = find(s, t);
-            if (found.isEmpty()) {
-                // TODO: 获取准确的属性路径
-                messager.printMessage(Diagnostic.Kind.WARNING, String.format("The property(%s) in the method(%s) has no matched mapping target property, please check the field name and field type.", spd.objectFullPath, methodFullPath));
-                return;
-            }
-
-            GetterDescriptor getterDescriptor = found.keySet().iterator().next();
-            SetterDescriptor setterDescriptor = found.get(getterDescriptor);
-
+            PropertyCopySetUp found = find(spd, tpd, objectName, t);
+            if (found == null) return;
+            GetterDescriptor getterDescriptor = found.getterDescriptor;
+            SetterDescriptor setterDescriptor = found.setterDescriptor;
+            Converter converter = found.converter;
             switch (setterDescriptor.setAccessType) {
                 case PUBLIC_METHOD:
                     switch (getterDescriptor.getAccessType) {
                         case PUBLIC_METHOD:
-                            b.addStatement("$L.$L($L.$L())", tpd.objectName, setterDescriptor.setterName, spd.objectName, getterDescriptor.getterName);
+                            if (converter == null) {
+                                b.addStatement("$L.$L($L.$L())", tpd.paramName, setterDescriptor.setterName, spd.paramName, getterDescriptor.getterName);
+                            } else {
+                                String source = String.format("%s.%s()", spd.paramName, getterDescriptor.getterName);
+                                String target = String.format("%s.%s", tpd.paramName, setterDescriptor.setterName);
+                                b.beginIf("$L.$L() != null", spd.paramName, getterDescriptor.getterName)
+                                    .addCode(bb -> executePropertyConverter(bb, target + "(%s)", converter, source))
+                                    .endIf();
+                            }
                             break;
                         case PUBLIC_FIEld:
-                            b.addStatement("$L.$L($L.$L)", tpd.objectName, setterDescriptor.setterName, spd.objectName, getterDescriptor.getterName);
+                            if (converter == null) {
+                                b.addStatement("$L.$L($L.$L)", tpd.paramName, setterDescriptor.setterName, spd.paramName, getterDescriptor.getterName);
+                            } else {
+                                String source = String.format("%s.%s", spd.paramName, getterDescriptor.getterName);
+                                String target = String.format("%s.%s", tpd.paramName, setterDescriptor.setterName);
+                                b.beginIf("$L.$L() != null", spd.paramName, getterDescriptor.getterName)
+                                    .addCode(bb -> executePropertyConverter(bb, target + "(%s)", converter, source))
+                                    .endIf();
+                            }
                             break;
                         default:
                             throw new IllegalStateException("Unsupported AccessType: " + getterDescriptor.getAccessType.name());
@@ -430,10 +576,26 @@ class MethodBuilder {
                 case PUBLIC_FIEld:
                     switch (getterDescriptor.getAccessType) {
                         case PUBLIC_METHOD:
-                            b.addStatement("$L.$L = $L.$L()", tpd.objectName, setterDescriptor.setterName, spd.objectName, getterDescriptor.getterName);
+                            if (converter == null) {
+                                b.addStatement("$L.$L = $L.$L()", tpd.paramName, setterDescriptor.setterName, spd.paramName, getterDescriptor.getterName);
+                            } else {
+                                String source = String.format("%s.%s()", spd.paramName, getterDescriptor.getterName);
+                                String target = String.format("%s.%s = ", tpd.paramName, setterDescriptor.setterName);
+                                b.beginIf("$L.$L() != null", spd.paramName, getterDescriptor.getterName)
+                                    .addCode(bb -> executePropertyConverter(bb, target + "%s", converter, source))
+                                    .endIf();
+                            }
                             break;
                         case PUBLIC_FIEld:
-                            b.addStatement("$L.$L = $L.$L", tpd.objectName, setterDescriptor.setterName, spd.objectName, getterDescriptor.getterName);
+                            if (converter == null) {
+                                b.addStatement("$L.$L = $L.$L", tpd.paramName, setterDescriptor.setterName, spd.paramName, getterDescriptor.getterName);
+                            } else {
+                                String source = String.format("%s.%s", spd.paramName, getterDescriptor.getterName);
+                                String target = String.format("%s.%s = ", tpd.paramName, setterDescriptor.setterName);
+                                b.beginIf("$L.$L != null", spd.paramName, getterDescriptor.getterName)
+                                    .addCode(bb -> executePropertyConverter(bb, target + "%s", converter, source))
+                                    .endIf();
+                            }
                             break;
                         default:
                             throw new IllegalStateException("Unsupported AccessType: " + getterDescriptor.getAccessType.name());
@@ -442,39 +604,66 @@ class MethodBuilder {
                 default:
                     throw new IllegalStateException("Unsupported AccessType: " + setterDescriptor.setAccessType.name());
             }
-
         });
     }
 
+    private String parsePropertyName(String paramProperTyName) {
+        String[] strArray = paramProperTyName.split("\\.");
+        if (strArray.length > 1) return strArray[1];
+        return paramProperTyName;
+    }
 
-    private Map<GetterDescriptor, SetterDescriptor> find(PropertyDescriptor s, PropertyDescriptor t) {
-        if (s == null || t == null) {
-            return Collections.emptyMap();
+    private String parseParamName(String paramProperTyName) {
+        String[] strArray = paramProperTyName.split("\\.");
+        if (strArray.length > 1) return strArray[0];
+        return null;
+    }
+
+
+    private @Nullable PropertyCopySetUp find(ParamDescriptor spd, ParamDescriptor tpd, String objectName, PropertyDescriptor t) {
+
+        PropertyDescriptor s = null;
+        ParamPropertyMapping mapping = targetPropertyMappingMap.get(t.fullPath);
+        if (mapping != null) {
+            if (mapping.ignore) return null; //target指向ignore，无法映射
+            String paramName = parseParamName(mapping.sourceParamPropertyName);
+            if (StringHelper.isNotBlank(paramName) && !spd.paramName.equals(paramName)) return null; // 参数名不匹配，无法映射
+
+            String sourceParamPropertyName = parsePropertyName(mapping.sourceParamPropertyName);
+            if ((s = spd.propertyDescriptorMap.get(sourceParamPropertyName)) == null) { // 参数没有任何属性匹配mapping指定的source
+                String msg = String.format("The method[%s] has illegal PropertyMapping annotation ,Illegal source[%s] was found.", spd.methodFullPath, mapping.sourceParamPropertyName);
+                messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                throw new IllegalStateException(msg);
+            }
+        } else {
+            if (includeAllSourceProperties(spd) && includeAllTargetProperties(tpd)) s = spd.propertyDescriptorMap.get(objectName);
         }
 
-        for (GetterDescriptor getterDescriptor : s.getterDescriptors) {
-            for (SetterDescriptor setterDescriptor : t.setterDescriptors) {
-                if (typeUtils.isAssignable(setterDescriptor.typeMirror, getterDescriptor.typeMirror)) {
-                    return MapHelper.ofHashMap(MapHelper.entry(getterDescriptor, setterDescriptor));
+        if (s != null) {
+            for (GetterDescriptor getterDescriptor : s.getterDescriptors) {
+                for (SetterDescriptor setterDescriptor : t.setterDescriptors) {
+                    if (mapping != null && mapping.converter != null) {
+                        return new PropertyCopySetUp(getterDescriptor, setterDescriptor, mapping.converter);
+                    }
+                    if (typeUtils.isAssignable(setterDescriptor.typeMirror, getterDescriptor.typeMirror)) {
+                        return new PropertyCopySetUp(getterDescriptor, setterDescriptor);
+                    }
                 }
             }
         }
-
-        return Collections.emptyMap();
+        return null;
     }
 
-    private void codeForParamNotNull(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ObjectDescriptor objectDescriptor) {
-        if (!objectDescriptor.isNullable()) {
-            b.beginIf("$L == null", objectDescriptor.objectName)
-                .addStatement("throw new $T($S)", IllegalArgumentException.class, String.format("The parameter('%s') in the method(%s) can't be null.", objectDescriptor.objectFullPath, methodFullPath))
+    private void codeForParamNotNull(ComplexJavaCodeBlockBuilder<MethodSpec.Builder> b, ParamDescriptor paramDescriptor) {
+        if (!paramDescriptor.isNullable()) {
+            b.beginIf("$L == null", paramDescriptor.paramName)
+                .addStatement("throw new $T($S)", IllegalArgumentException.class, String.format("The parameter('%s') in the method(%s) can't be null.", paramDescriptor.paramFullPath, methodFullPath))
                 .endIf();
         }
     }
 
     private ElementConverter findElementConverter() {
-        return Optional.of(this.executableElement.getAnnotation(ElementConverter.class))
+        return Optional.ofNullable(this.executableElement.getAnnotation(ElementConverter.class))
             .orElseThrow(() -> new IllegalStateException(String.format("The converter method used between datasets in the method(%s) isn't defined!", methodFullPath)));
-
-
     }
 }
