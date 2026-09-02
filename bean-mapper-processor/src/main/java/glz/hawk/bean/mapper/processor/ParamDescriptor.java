@@ -16,9 +16,9 @@
 
 package glz.hawk.bean.mapper.processor;
 
-import glz.hawkframework.core.helper.StringHelper;
 import glz.hawk.bean.mapper.annotation.MappingSource;
 import glz.hawk.bean.mapper.annotation.MappingTarget;
+import glz.hawkframework.core.helper.StringHelper;
 
 import javax.annotation.processing.Messager;
 import javax.lang.model.element.*;

@@ -18,8 +18,6 @@ package glz.hawk.bean.mapper.processor;
 
 import glz.hawk.bean.mapper.annotation.Converter;
 
-import java.util.List;
-
 public class PropertyCopySetUp {
     public final GetterDescriptor getterDescriptor;
     public final SetterDescriptor setterDescriptor;

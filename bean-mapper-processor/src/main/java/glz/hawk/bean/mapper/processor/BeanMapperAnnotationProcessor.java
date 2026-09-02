@@ -18,7 +18,10 @@ package glz.hawk.bean.mapper.processor;
 
 import glz.hawk.bean.mapper.annotation.AutowiredBean;
 import glz.hawk.bean.mapper.annotation.BeanMapper;
-import glz.hawk.codepoet.java.*;
+import glz.hawk.codepoet.java.AnnotationInstanceSpec;
+import glz.hawk.codepoet.java.ClassSpec;
+import glz.hawk.codepoet.java.FieldSpec;
+import glz.hawk.codepoet.java.JavaFile;
 import glz.hawk.codepoet.java.type.ClassName;
 import glz.hawk.codepoet.java.type.TypeNameHelper;
 import glz.hawkframework.core.helper.StringHelper;

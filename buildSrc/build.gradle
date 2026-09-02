@@ -8,3 +8,9 @@ repositories {
     mavenCentral()
 }
 
+allprojects {
+    configurations.configureEach {
+        resolutionStrategy.cacheChangingModulesFor 0, "minutes"
+        resolutionStrategy.cacheDynamicVersionsFor 0, "minutes"
+    }
+}
