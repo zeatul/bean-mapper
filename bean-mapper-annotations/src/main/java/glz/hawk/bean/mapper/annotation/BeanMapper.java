@@ -36,11 +36,15 @@ public @interface BeanMapper {
 
     /**
      * The instance of {@code implClassPackageGeneratorClass} will be used to generate the package of mapper implementation class.
+     * <p>The custom generator class must have a public no-arg constructor and be visible on the annotation processor classpath
+     * (e.g. declared in the {@code annotationProcessor} configuration in Gradle).</p>
      */
     Class<? extends Function<String, String>> implClassPackageGeneratorClass() default DefaultImplClassPackageGenerator.class;
 
     /**
      * The instance of {@code implClassNameGeneratorClass} will be used to generate the name of mapper implementation class.
+     * <p>The custom generator class must have a public no-arg constructor and be visible on the annotation processor classpath
+     * (e.g. declared in the {@code annotationProcessor} configuration in Gradle).</p>
      */
     Class<? extends Function<String, String>> implClassNameGeneratorClass() default DefaultImplClassNameGenerator.class;
 

@@ -8,5 +8,27 @@ dependencies {
     implementation 'io.github.zeatul:hawk-core'
     implementation project(':bean-mapper-annotations')
     implementation 'io.github.zeatul:javapoet-pro'
-    implementation 'org.springframework:spring-context'
+
+    // Processor end-to-end testing
+    testImplementation 'com.google.testing.compile:compile-testing'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.junit.platform:junit-platform-launcher'
+}
+
+// JDK 8 tools.jar for compile-testing (contains com.sun.source.util.TreeScanner)
+// Resolve via Java Toolchains at configuration time, add to test classpath directly
+def jdk8Launcher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(8)
+}.get()
+def javaHome = jdk8Launcher.metadata.javaHome.asFile.absolutePath
+def toolsJarFile = new File(javaHome, 'lib/tools.jar')
+if (toolsJarFile.exists()) {
+    tasks.named('test') {
+        classpath += files(toolsJarFile.absolutePath)
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }

@@ -25,14 +25,14 @@ import java.util.List;
  * @author Hawk
  */
 class PropertyDescriptor {
-    public final String propertyNam;
+    public final String propertyName;
     public final String fullPath;
     public List<GetterDescriptor> getterDescriptors = new ArrayList<>();
     public List<SetterDescriptor> setterDescriptors = new ArrayList<>();
 
-    PropertyDescriptor(String parentFullPath, String propertyNam) {
-        this.propertyNam = propertyNam;
-        this.fullPath = parentFullPath + "." + propertyNam;
+    PropertyDescriptor(String parentFullPath, String propertyName) {
+        this.propertyName = propertyName;
+        this.fullPath = parentFullPath + "." + propertyName;
     }
 
     void add(GetterDescriptor getterDescriptor) {

@@ -1,0 +1,164 @@
+Initialized native services in: E:\.gradle\native
+Initialized jansi services in: E:\.gradle\native
+Received JVM installation metadata from 'E:\mydata\env\jdk\jdk-21.0.1': {JAVA_HOME=E:\mydata\env\jdk\jdk-21.0.1, JAVA_VERSION=21.0.1, JAVA_VENDOR=Oracle Corporation, RUNTIME_NAME=Java(TM) SE Runtime Environment, RUNTIME_VERSION=21.0.1+12-LTS-29, VM_NAME=Java HotSpot(TM) 64-Bit Server VM, VM_VERSION=21.0.1+12-LTS-29, VM_VENDOR=Oracle Corporation, OS_ARCH=amd64}
+Found daemon DaemonInfo{pid=20252, address=[31963580-9f71-4405-a730-687a9d54dc30 port:51260, addresses:[/127.0.0.1]], state=Idle, lastBusy=1791968027239, context=DefaultDaemonContext[uid=44db1ce3-f204-4dce-93ba-97d88b52d060,javaHome=E:\mydata\env\jdk\jdk-21.0.1,daemonRegistryDir=E:\.gradle\daemon,pid=20252,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,daemonOpts=--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Dfile.encoding=UTF-8,-Duser.country,-Duser.language=en,-Duser.variant]} however its context does not match the desired criteria.
+At least one daemon option is different.
+Wanted: DefaultDaemonContext[uid=null,javaHome=E:\mydata\env\jdk\jdk-21.0.1,daemonRegistryDir=E:\.gradle\daemon,pid=17040,idleTimeout=null,priority=NORMAL,applyInstrumentationAgent=true,daemonOpts=--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Dfile.encoding=UTF-8,-Duser.country=CN,-Duser.language=en,-Duser.variant]
+Actual: DefaultDaemonContext[uid=44db1ce3-f204-4dce-93ba-97d88b52d060,javaHome=E:\mydata\env\jdk\jdk-21.0.1,daemonRegistryDir=E:\.gradle\daemon,pid=20252,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,daemonOpts=--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Dfile.encoding=UTF-8,-Duser.country,-Duser.language=en,-Duser.variant]
+
+  Looking for a different daemon...
+The client will now receive all logging from the daemon (pid: 20460). The daemon log file: E:\.gradle\daemon\8.7\daemon-20460.out.log
+Starting 8th build in daemon [uptime: 1 mins 54.938 secs, performance: 100%, GC rate: 0.00/s, heap usage: 0% of 3.8 GiB]
+Using 8 worker leases.
+Closing daemon's stdin at end of input.
+The daemon will no longer process any standard input.
+Now considering [E:\mydata\projects\hawk\bean-mapper, E:\mydata\projects\hawk\bean-mapper\buildSrc, E:\mydata\projects\hawk\codepoet\buildSrc, E:\mydata\projects\hawk\codepoet] as hierarchies to watch
+Now considering [E:\mydata\projects\hawk\bean-mapper\buildSrc, E:\mydata\projects\hawk\bean-mapper, E:\mydata\projects\hawk\codepoet\buildSrc, E:\mydata\projects\hawk\codepoet] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file 'E:\mydata\projects\hawk\bean-mapper\settings.gradle'.
+Using local directory build cache for the root build (location = E:\.gradle\caches\build-cache-1, removeUnusedEntriesAfter = 7 days).
+Projects loaded. Root project using build file 'E:\mydata\projects\hawk\bean-mapper\build.gradle'.
+Included projects: [root project 'bean-mapper', project ':bean-mapper-annotations', project ':bean-mapper-bom', project ':bean-mapper-integration-test', project ':bean-mapper-processor', project ':bean-mapper-sample']
+
+> Configure project :buildSrc
+Evaluating project ':buildSrc' using build file 'E:\mydata\projects\hawk\bean-mapper\buildSrc\build.gradle'.
+file or directory 'E:\mydata\projects\hawk\bean-mapper\buildSrc\src\main\resources', not found
+file or directory 'E:\mydata\projects\hawk\bean-mapper\buildSrc\src\main\java', not found
+file or directory 'E:\mydata\projects\hawk\bean-mapper\buildSrc\src\main\resources', not found
+file or directory 'E:\mydata\projects\hawk\bean-mapper\buildSrc\src\main\java', not found
+file or directory 'E:\mydata\projects\hawk\bean-mapper\buildSrc\src\main\resources', not found
+file or directory 'E:\mydata\projects\hawk\bean-mapper\buildSrc\src\main\java', not found
+Resolve mutations for :buildSrc:extractPluginRequests (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:extractPluginRequests (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:extractPluginRequests UP-TO-DATE
+Build cache key for task ':buildSrc:extractPluginRequests' is 3103f3ad88bb4a0460778456db798c03
+Skipping task ':buildSrc:extractPluginRequests' as it is up-to-date.
+Resolve mutations for :buildSrc:generatePluginAdapters (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:generatePluginAdapters (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:generatePluginAdapters UP-TO-DATE
+Build cache key for task ':buildSrc:generatePluginAdapters' is a48e07e9ab1433411f76408c8665134a
+Skipping task ':buildSrc:generatePluginAdapters' as it is up-to-date.
+Resolve mutations for :buildSrc:compileJava (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:compileJava (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:compileJava UP-TO-DATE
+Build cache key for task ':buildSrc:compileJava' is 2e839c26df275afc9c30d6c6e71885cb
+Skipping task ':buildSrc:compileJava' as it is up-to-date.
+Resolve mutations for :buildSrc:compileGroovy (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:compileGroovy (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:compileGroovy NO-SOURCE
+Skipping task ':buildSrc:compileGroovy' as it has no source files and no previous output files.
+Resolve mutations for :buildSrc:compileGroovyPlugins (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:compileGroovyPlugins (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:compileGroovyPlugins UP-TO-DATE
+Build cache key for task ':buildSrc:compileGroovyPlugins' is d44cc23f3b8b0ddc40baeb86ccdcbf9c
+Skipping task ':buildSrc:compileGroovyPlugins' as it is up-to-date.
+Resolve mutations for :buildSrc:pluginDescriptors (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:pluginDescriptors (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:pluginDescriptors UP-TO-DATE
+Caching disabled for task ':buildSrc:pluginDescriptors' because:
+  Not worth caching
+Skipping task ':buildSrc:pluginDescriptors' as it is up-to-date.
+Resolve mutations for :buildSrc:processResources (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:processResources (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:processResources UP-TO-DATE
+Caching disabled for task ':buildSrc:processResources' because:
+  Not worth caching
+Skipping task ':buildSrc:processResources' as it is up-to-date.
+Resolve mutations for :buildSrc:classes (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:classes (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:classes UP-TO-DATE
+Skipping task ':buildSrc:classes' as it has no actions.
+Resolve mutations for :buildSrc:jar (Thread[#298,Execution worker,5,main]) started.
+:buildSrc:jar (Thread[#298,Execution worker,5,main]) started.
+
+> Task :buildSrc:jar UP-TO-DATE
+Caching disabled for task ':buildSrc:jar' because:
+  Not worth caching
+Skipping task ':buildSrc:jar' as it is up-to-date.
+
+> Transform buildSrc.jar (project :buildSrc) with ProjectDependencyInstrumentingArtifactTransform
+Transforming buildSrc.jar (project :buildSrc) with ProjectDependencyInstrumentingArtifactTransform
+
+> Configure project :
+Evaluating root project 'bean-mapper' using build file 'E:\mydata\projects\hawk\bean-mapper\build.gradle'.
+Transforming nmcp-1.2.0.jar (com.gradleup.nmcp:nmcp:1.2.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming gratatouille-wiring-runtime-0.1.1.jar (com.gradleup.gratatouille:gratatouille-wiring-runtime:0.1.1) with ExternalDependencyInstrumentingArtifactTransform
+Transforming gratatouille-tasks-runtime-0.1.1.jar (com.gradleup.gratatouille:gratatouille-tasks-runtime:0.1.1) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlinx-serialization-json-jvm-1.8.1.jar (org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.1) with ExternalDependencyInstrumentingArtifactTransform
+Transforming serialization-jvm-0.91.1.jar (io.github.pdvrieze.xmlutil:serialization-jvm:0.91.1) with ExternalDependencyInstrumentingArtifactTransform
+Transforming core-jvmcommon-0.91.1.jar (io.github.pdvrieze.xmlutil:core-jvmcommon:0.91.1) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlinx-serialization-core-jvm-1.8.1.jar (org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.8.1) with ExternalDependencyInstrumentingArtifactTransform
+Transforming okhttp-4.12.0.jar (com.squareup.okhttp3:okhttp:4.12.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlinx-coroutines-core-jvm-1.10.2.jar (org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2) with ExternalDependencyInstrumentingArtifactTransform
+Transforming okio-jvm-3.8.0.jar (com.squareup.okio:okio-jvm:3.8.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-test-2.0.0.jar (org.jetbrains.kotlin:kotlin-test:2.0.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-stdlib-jdk7-1.9.0.jar (org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-stdlib-2.1.21.jar (org.jetbrains.kotlin:kotlin-stdlib:2.1.21) with ExternalDependencyInstrumentingArtifactTransform
+Transforming kotlin-stdlib-jdk8-1.9.0.jar (org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0) with ExternalDependencyInstrumentingArtifactTransform
+Transforming annotations-23.0.0.jar (org.jetbrains:annotations:23.0.0) with ExternalDependencyInstrumentingArtifactTransform
+
+> Configure project :bean-mapper-annotations
+Evaluating project ':bean-mapper-annotations' using build file 'E:\mydata\projects\hawk\bean-mapper\bean-mapper-annotations\build.gradle'.
+
+> Configure project :bean-mapper-bom
+Evaluating project ':bean-mapper-bom' using build file 'E:\mydata\projects\hawk\bean-mapper\bean-mapper-bom\build.gradle'.
+
+> Configure project :bean-mapper-integration-test
+Evaluating project ':bean-mapper-integration-test' using build file 'E:\mydata\projects\hawk\bean-mapper\bean-mapper-integration-test\build.gradle'.
+
+> Configure project :bean-mapper-processor
+Evaluating project ':bean-mapper-processor' using build file 'E:\mydata\projects\hawk\bean-mapper\bean-mapper-processor\build.gradle'.
+
+> Configure project :bean-mapper-sample
+Evaluating project ':bean-mapper-sample' using build file 'E:\mydata\projects\hawk\bean-mapper\bean-mapper-sample\build.gradle'.
+All projects evaluated.
+Task path ':bean-mapper-bom:publishMavenBomPublicationToMavenLocal' matched project ':bean-mapper-bom'
+Task name matched 'publishMavenBomPublicationToMavenLocal'
+Selected primary task 'publishMavenBomPublicationToMavenLocal' from project :bean-mapper-bom
+Tasks to be executed: [task ':bean-mapper-bom:generatePomFileForMavenBomPublication', task ':bean-mapper-bom:signMavenBomPublication', task ':bean-mapper-bom:publishMavenBomPublicationToMavenLocal']
+Tasks that were excluded: []
+Resolve mutations for :bean-mapper-bom:generatePomFileForMavenBomPublication (Thread[#297,included builds,5,main]) started.
+:bean-mapper-bom:generatePomFileForMavenBomPublication (Thread[#297,included builds,5,main]) started.
+
+> Task :bean-mapper-bom:generatePomFileForMavenBomPublication
+Custom actions are attached to task ':bean-mapper-bom:generatePomFileForMavenBomPublication'.
+Caching disabled for task ':bean-mapper-bom:generatePomFileForMavenBomPublication' because:
+  Task is untracked because: Gradle doesn't understand the data structures used to configure this task
+Task ':bean-mapper-bom:generatePomFileForMavenBomPublication' is not up-to-date because:
+  Task is untracked because: Gradle doesn't understand the data structures used to configure this task
+Resolve mutations for :bean-mapper-bom:signMavenBomPublication (Thread[#297,included builds,5,main]) started.
+:bean-mapper-bom:signMavenBomPublication (Thread[#297,included builds,5,main]) started.
+
+> Task :bean-mapper-bom:signMavenBomPublication UP-TO-DATE
+Caching disabled for task ':bean-mapper-bom:signMavenBomPublication' because:
+  Not made cacheable, yet
+Skipping task ':bean-mapper-bom:signMavenBomPublication' as it is up-to-date.
+Resolve mutations for :bean-mapper-bom:publishMavenBomPublicationToMavenLocal (Thread[#297,included builds,5,main]) started.
+:bean-mapper-bom:publishMavenBomPublicationToMavenLocal (Thread[#297,included builds,5,main]) started.
+
+> Task :bean-mapper-bom:publishMavenBomPublicationToMavenLocal
+Caching disabled for task ':bean-mapper-bom:publishMavenBomPublicationToMavenLocal' because:
+  Not worth caching
+Task ':bean-mapper-bom:publishMavenBomPublicationToMavenLocal' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Publishing to maven local repository
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.7/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 7s
+10 actionable tasks: 2 executed, 8 up-to-date
+Watched directory hierarchies: [E:\mydata\projects\hawk\bean-mapper, E:\mydata\projects\hawk\codepoet]

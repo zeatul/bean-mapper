@@ -30,8 +30,8 @@ import java.util.function.Supplier;
  abstract class ClassUtils {
     static <T> T instance(Class<T> clazz) {
         try {
-            return clazz.newInstance();
-        } catch (Exception e) {
+            return clazz.getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }

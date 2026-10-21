@@ -23,6 +23,7 @@ import java.lang.annotation.Target;
 
 /**
  * 这个注解用来注入bean供转换代码引用
+ * <p>生成的实现类中的bean通过Spring的@Autowired注入，因此生成的实现类需要由Spring容器管理才能完成注入</p>
  *
  * @author Zhang Peng
  */
@@ -37,6 +38,7 @@ public @interface AutowiredBean {
 
     /**
      * 对应于Spring Framework的@Qualifier注解
+     * <p>最多只能指定一个，因为Spring的@Qualifier不是可重复注解，同一字段上生成多个@Qualifier会导致编译失败</p>
      */
     String[] qualifier() default {};
 

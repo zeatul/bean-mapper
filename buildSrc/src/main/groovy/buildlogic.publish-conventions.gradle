@@ -1,0 +1,62 @@
+plugins {
+    id 'maven-publish'
+    id 'signing'
+}
+
+publishing {
+    // The repository for publications is defined in the init.gradle file.
+    repositories {
+        mavenLocal()
+    }
+
+    // Static POM metadata shared by every publication in the project.
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            url = 'https://github.com/zeatul/bean-mapper'
+            licenses {
+                license {
+                    name = 'Apache-2.0'
+                    url = 'https://opensource.org/licenses/Apache-2.0'
+                }
+            }
+            developers {
+                developer {
+                    name = 'Zhang Peng'
+                    email = 'zeatul@qq.com'
+                }
+            }
+            scm {
+                connection = 'scm:git:git://github.com/zeatul/bean-mapper.git'
+                developerConnection = 'scm:git:ssh://github.com/zeatul/bean-mapper.git'
+                url = 'https://github.com/zeatul/bean-mapper.git'
+            }
+        }
+    }
+}
+
+// name/description are usually set by the build script, so read them after evaluation.
+project.afterEvaluate {
+    publishing.publications.withType(MavenPublication).configureEach {
+        pom {
+            name = project.name
+            description = project.description
+        }
+    }
+}
+
+signing {
+    required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") }
+
+    def signingKey = System.getenv("GPG_PRIVATE_KEY")
+    def signingPassword = System.getenv("GPG_PASSPHRASE")
+
+    if (signingKey && signingPassword) {
+        // CI：内存密钥，不需要 keyId 和密钥文件
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+}
+
+// Sign every publication declared by the project.
+publishing.publications.withType(MavenPublication).configureEach {
+    signing.sign(it)
+}

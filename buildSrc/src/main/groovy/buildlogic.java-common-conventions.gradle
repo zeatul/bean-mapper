@@ -6,22 +6,34 @@ plugins {
 
 
 java {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))
     }
+
+    // 显式指定兼容性
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 
     withJavadocJar() //with java doc
     withSourcesJar() //with java source
 }
 
 dependencies {
-    implementation(platform("io.github.zeatul:hawk-bom:1.1.0"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.assertj:assertj-core")
-    testImplementation("org.junit.platform:junit-platform-launcher")
+    // 依赖版本统一由 hawk-dependencies-bom（第三方）、hawk-framework-bom（hawk-core）
+    // 和 codepoet-bom（javapoet-pro）管理。
+    implementation(platform(libs.hawk.dependencies.bom))
+    implementation(platform(libs.hawk.framework.bom))
+    implementation(platform(libs.codepoet.bom))
+
+    // Also import BOMs for testImplementation to resolve test dependencies from BOMs
+//    testImplementation(platform(libs.hawk.dependencies.bom))
+//    testImplementation(platform(libs.hawk.framework.bom))
+//    testImplementation(platform(libs.codepoet.bom))
+
+    // Test dependencies - versions managed by BOMs
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.assertj:assertj-core"
+    testImplementation "org.junit.platform:junit-platform-launcher"
 }
 
 tasks.named('test') {
@@ -79,6 +91,14 @@ publishing {
 
 signing {
     required { !version.endsWith("SNAPSHOT") && gradle.taskGraph.hasTask("publish") }
+
+    def signingKey = System.getenv("GPG_PRIVATE_KEY")
+    def signingPassword = System.getenv("GPG_PASSPHRASE")
+
+    if (signingKey && signingPassword) {
+        // CI：内存密钥，不需要 keyId 和密钥文件
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+
     sign publishing.publications.myLibrary
 }
-

@@ -1,0 +1,116 @@
+name: Publish to Maven Central
+
+on:
+    push:
+        tags:
+            - 'v[0-9]+.[0-9]+.[0-9]+'   # Release: v1.2.0, v2.0.0 等
+        branches:
+            - main                       # Snapshot: main 分支推送 (版本需含 -SNAPSHOT)
+    workflow_dispatch:               # 手动触发
+        inputs:
+            version:
+                description: 'Release version (e.g. 1.2.0)'
+                required: true
+                type: string
+            force:
+                description: 'Force publish even if tag exists'
+                type: boolean
+                default: false
+
+permissions:
+    contents: read
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0  # 需要完整历史以推断版本/标签
+
+            - name: Setup Java 21 (Gradle runtime)
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 21
+                  cache: gradle
+                  # 配置 GPG 签名所需环境（nmcp 会自动读取）
+                  server-id: central
+                  server-username: ${{ secrets.SONATYPE_USERNAME }}
+                  server-password: ${{ secrets.SONATYPE_PASSWORD }}
+                  gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+                  gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+            - name: Grant gradlew permission
+              run: chmod +x gradlew
+
+            - name: Determine version & type
+              id: meta
+              run: |
+                  set -euo pipefail
+                  if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+                    VERSION="${{ github.event.inputs.version }}"
+                    TYPE="release"
+                    echo "Manual dispatch: version=$VERSION"
+                  elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+                    VERSION="${{ github.ref_name }}"
+                    VERSION="${VERSION#v}"  # 移除 v 前缀
+                    TYPE="release"
+                    echo "Tag push: version=$VERSION"
+                  else
+                    # main 分支推送：读取 gradle.properties 版本
+                    VERSION=$(./gradlew -q printVersion 2>/dev/null || grep "^version=" gradle.properties | cut -d= -f2)
+                    if [[ "$VERSION" == *-SNAPSHOT ]]; then
+                      TYPE="snapshot"
+                    else
+                      echo "❌ main branch push must use -SNAPSHOT version (current: $VERSION)"
+                      echo "   For release, create and push a tag: git tag v$VERSION && git push origin v$VERSION"
+                      exit 1
+                    fi
+                    echo "Branch push: version=$VERSION, type=$TYPE"
+                  fi
+                  # 校验 release 版本不能含 -SNAPSHOT
+                  if [[ "$TYPE" == "release" && "$VERSION" == *-SNAPSHOT ]]; then
+                    echo "❌ Release version cannot contain -SNAPSHOT: $VERSION"
+                    exit 1
+                  fi
+                  echo "version=$VERSION" >> $GITHUB_OUTPUT
+                  echo "type=$TYPE" >> $GITHUB_OUTPUT
+
+            - name: Validate release tag uniqueness
+              if: steps.meta.outputs.type == 'release' && github.event_name != 'workflow_dispatch'
+              run: |
+                  TAG="v${{ steps.meta.outputs.version }}"
+                  if git rev-parse "$TAG" >/dev/null 2>&1; then
+                    if [[ "${{ github.event.inputs.force }}" != "true" ]]; then
+                      echo "❌ Tag $TAG already exists. Use force=true to override."
+                      exit 1
+                    fi
+                  fi
+
+            - name: Publish Snapshot
+              if: steps.meta.outputs.type == 'snapshot'
+              run: ./gradlew publishAggregationToCentralPortalSnapshots --no-daemon --info
+              env:
+                  SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+                  SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+
+            - name: Publish Release
+              if: steps.meta.outputs.type == 'release'
+              run: ./gradlew publishAggregationToCentralPortal --no-daemon --info
+              env:
+                  SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+                  SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+                  GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+                  GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+            - name: Create GitHub Release
+              if: steps.meta.outputs.type == 'release' && github.event_name != 'workflow_dispatch'
+              uses: softprops/action-gh-release@v1
+              with:
+                  tag_name: v${{ steps.meta.outputs.version }}
+                  generate_release_notes: true
+                  draft: false
+                  prerelease: false

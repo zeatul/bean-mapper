@@ -47,7 +47,7 @@ import static glz.hawk.bean.mapper.annotation.ConverterParamType.*;
         "glz.hawk.bean.mapper.sample.beans.BookUpdate.*"
     }
 )
-public interface BookMapper {
+public interface BookMapper extends BaseMapper<BookPo, BookUpdate> {
     BookUpdate convert1(BookPo bookPo);
 
     @PropertyMapping(source = "bookId", ignore = true)
@@ -56,8 +56,7 @@ public interface BookMapper {
 
     @PropertyMapping(source = "bookId", ignore = false)
     @PropertyMapping(source = "bookName", ignore = true)
-    @MappingTarget(includeAll = false)
-    BookUpdate convert1_2(BookPo bookPo);
+    BookUpdate convert1_2(BookPo bookPo, @MappingTarget(includeAll = false) BookUpdate bookUpdate);
 
     @PropertyMapping(source = "bookId", ignore = false)
     @PropertyMapping(source = "bookName", ignore = true)
@@ -89,6 +88,14 @@ public interface BookMapper {
 
     @ElementConverter(format = "convert1($L)", params = @ConverterParam(type = ConverterParamType.SOURCE))
     BookUpdate[] convert11(List<BookPo> bookPoList);
+
+    /**
+     * 验证仅含public field（无getter）的属性配合converter转换到方法setter的代码生成
+     */
+    @PropertyMapping(source = "fieldDate", target = "publishDate",
+        converter = @Converter(format = "$L", params = @ConverterParam(type = SOURCE))
+    )
+    BookUpdate convert12(BookExPo bookExPo);
 
     void copy1(BookPo bookPo, BookUpdate bookUpdate);
 

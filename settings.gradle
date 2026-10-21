@@ -12,7 +12,9 @@ rootProject.name = 'bean-mapper'
 
 include 'bean-mapper-annotations'
 include 'bean-mapper-processor'
+include 'bean-mapper-bom'
 include 'bean-mapper-sample'
+include 'bean-mapper-integration-test'
 
 dependencyResolutionManagement {
 

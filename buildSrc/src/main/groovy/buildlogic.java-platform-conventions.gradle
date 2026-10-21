@@ -1,0 +1,119 @@
+import groovy.json.JsonOutput
+import groovy.toml.TomlSlurper
+
+plugins {
+    id 'java-platform'
+    id 'buildlogic.publish-conventions'
+}
+
+group = 'io.github.zeatul'
+
+def tomlFile = file("${rootProject.projectDir}/gradle/libs.versions.toml")
+if (!tomlFile.exists()) {
+    throw new FileNotFoundException("${tomlFile.path} doesn't exist.")
+}
+def versionCatalog = new TomlSlurper().parse(tomlFile)
+def versions = versionCatalog.versions
+
+// The BOM version always follows the project version declared in gradle.properties.
+version = rootProject.version
+
+def createDependencyConstraint = { libConfig ->
+    def group, name, ver, versionValue
+
+    if (libConfig instanceof Map) {
+        group = libConfig.group
+        name = libConfig.name
+        def versionInfo = libConfig.version
+
+        if (versionInfo instanceof Map && versionInfo.ref) {
+            // version.ref = "someVersion"
+            ver = versionInfo.ref
+            versionValue = versions[versionInfo.ref]
+        } else if (versionInfo instanceof String) {
+            // version = "1.0.0"
+            ver = group + "." + name + ".version"
+            versionValue = versionInfo
+        } else if (versionInfo == null && libConfig.versionRef) {
+            ver = group + "." + name + ".version"
+            versionValue = versions[libConfig.versionRef]
+        }
+    } else if (libConfig instanceof String) {
+        // "group:name:version"
+        def parts = libConfig.split(':')
+        if (parts.size() == 3) {
+            group = parts[0]
+            name = parts[1]
+            ver = group + "." + name + ".version"
+            versionValue = parts[2]
+        }
+    } else {
+        throw new RuntimeException("Illegal libConfig: " + libConfig)
+    }
+
+    if (group && name && ver && versionValue) {
+        return [group: group, artifactId: name, version: ver, versionValue: versionValue]
+    }
+    return null
+}
+
+/**
+ * Collects the dependency constraints whose coordinates satisfy {@code predicate}.
+ * Only bean-mapper modules (io.github.zeatul artifacts that start with bean-mapper-) are included.
+ */
+def collectConstraints = { String bomName, Closure predicate ->
+    def constraints = []
+    def propertiesMap = [:]
+
+    versionCatalog.libraries?.each { libName, libConfig ->
+        def dep = createDependencyConstraint(libConfig)
+        if (dep && predicate(dep)) {
+            constraints << dep
+            propertiesMap[dep.version] = dep.versionValue
+            println "add dependency [$bomName]: ${dep.group}:${dep.artifactId}:${dep.versionValue}"
+        }
+    }
+
+    return [constraints: constraints, propertiesMap: propertiesMap]
+}
+
+/**
+ * Writes the collected constraints into the POM as {@code <properties>} and
+ * {@code <dependencyManagement>} sections.
+ */
+def writeDependencyManagement = { pom, bomData ->
+    pom.withXml {
+        def constraints = bomData.constraints
+        def propertiesMap = bomData.propertiesMap
+
+        def root = asNode()
+
+        println JsonOutput.prettyPrint(JsonOutput.toJson(propertiesMap))
+
+        // Create the Properties section.
+        def pm = root.appendNode('properties')
+        propertiesMap.each { key, value ->
+            pm.appendNode(key, value)
+        }
+
+        // Create the dependencyManagement section.
+        def dm = root.appendNode('dependencyManagement').appendNode('dependencies')
+        constraints.each { dep ->
+            def dependencyNode = dm.appendNode('dependency')
+            dependencyNode.appendNode('groupId', dep.group)
+            dependencyNode.appendNode('artifactId', dep.artifactId)
+            dependencyNode.appendNode('version', '${' + dep.version + '}')
+        }
+    }
+}
+
+ext.collectConstraints = collectConstraints
+ext.writeDependencyManagement = writeDependencyManagement
+
+publishing {
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            packaging = 'pom'
+        }
+    }
+}

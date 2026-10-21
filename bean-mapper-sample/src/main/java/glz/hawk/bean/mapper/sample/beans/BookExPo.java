@@ -17,6 +17,7 @@
 package glz.hawk.bean.mapper.sample.beans;
 
 import java.math.BigInteger;
+import java.time.LocalDate;
 
 /**
  * This class is responsible for
@@ -30,6 +31,11 @@ public class BookExPo {
     private String bookName;
 
     private String a2;
+
+    /**
+     * 只有public field，没有getter/setter
+     */
+    public LocalDate fieldDate;
 
     public String getIsbn() {
         return this.isbn;

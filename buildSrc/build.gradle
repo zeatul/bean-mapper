@@ -4,13 +4,19 @@ plugins {
 }
 
 repositories {
-    gradlePluginPortal()
+    mavenLocal()
     mavenCentral()
+    gradlePluginPortal()
+}
+
+dependencies {
+    // Build-only dependency used to parse the version catalog for the BOM projects.
+    implementation 'org.apache.groovy:groovy-toml:4.0.29'
 }
 
 allprojects {
     configurations.configureEach {
-        resolutionStrategy.cacheChangingModulesFor 0, "minutes"
-        resolutionStrategy.cacheDynamicVersionsFor 0, "minutes"
+        resolutionStrategy.cacheChangingModulesFor 10, "minutes"
+        resolutionStrategy.cacheDynamicVersionsFor 10, "minutes"
     }
 }

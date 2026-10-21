@@ -23,10 +23,11 @@ import glz.hawk.codepoet.java.ClassSpec;
 import glz.hawk.codepoet.java.FieldSpec;
 import glz.hawk.codepoet.java.JavaFile;
 import glz.hawk.codepoet.java.type.ClassName;
+import glz.hawk.codepoet.java.type.ParameterizedTypeName;
+import glz.hawk.codepoet.java.type.TypeName;
 import glz.hawk.codepoet.java.type.TypeNameHelper;
+import glz.hawk.codepoet.java.type.TypeVariableName;
 import glz.hawkframework.core.helper.StringHelper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -34,9 +35,14 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -47,6 +53,9 @@ import java.util.Set;
 @SupportedAnnotationTypes("glz.hawk.bean.mapper.annotation.BeanMapper")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class BeanMapperAnnotationProcessor extends AbstractProcessor {
+
+    private static final ClassName SPRING_AUTOWIRED = ClassName.of("org.springframework.beans.factory.annotation", "Autowired");
+    private static final ClassName SPRING_QUALIFIER = ClassName.of("org.springframework.beans.factory.annotation", "Qualifier");
 
     private Types typeUtils;
     private Messager messager;
@@ -64,17 +73,23 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        messager.printMessage(Diagnostic.Kind.NOTE, "Start to Execute BeanMapperAnnotationProcessor");
+        if (roundEnv.errorRaised()) {
+            return true;
+        }
         roundEnv.getElementsAnnotatedWith(BeanMapper.class)
             .stream()
             .map(e -> (TypeElement) e)
             .forEach(typeElement -> {
                 if (typeElement.getKind() != ElementKind.INTERFACE) {
-                    throw new IllegalStateException("Only support interface. Current type is " + typeElement);
+                    String msg = "Only support interface. Current type is " + typeElement;
+                    messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                    throw new IllegalStateException(msg);
                 }
 
                 if (TypeNameHelper.isInnerClass(typeElement)) {
-                    throw new IllegalStateException("Inner class is unsupported. Current type is " + typeElement);
+                    String msg = "Inner class is unsupported. Current type is " + typeElement;
+                    messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                    throw new IllegalStateException(msg);
                 }
 
                 BeanMapper beanMapper = typeElement.getAnnotation(BeanMapper.class);
@@ -86,7 +101,11 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
                 final String mapperImplClassName = ClassUtils.instance(ClassUtils.getFunctionClass(beanMapper::implClassNameGeneratorClass)).apply(mapperClassName);
 
                 ClassSpec.Builder builder = ClassSpec.builder(mapperImplClassName, Modifier.PUBLIC)
-                    .addSuperInterface(ClassName.of(typeElement));
+                    .addSuperInterface(superInterfaceName(typeElement));
+                // 复制接口的类型参数到实现类
+                for (TypeParameterElement typeParameter : typeElement.getTypeParameters()) {
+                    builder.addTypeVariable(TypeVariableName.of(typeParameter.getSimpleName().toString()));
+                }
 
                 switch (beanMapper.componentModel()) {
                     case DEFAULT:
@@ -110,15 +129,23 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
                         builder.addAnnotation(AnnotationInstanceSpec.builder(ClassName.of("jakarta.enterprise.context", "ApplicationScoped")).build());
                         break;
                     default:
-                        throw new IllegalStateException("Unsupported ComponentMode: " + beanMapper.componentModel().name());
+                        String msg = "Unsupported ComponentMode: " + beanMapper.componentModel().name();
+                        messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                        throw new IllegalStateException(msg);
                 }
 
-                typeElement.getEnclosedElements()
+                // 处理接口声明的方法，包括从父接口继承的方法（类型参数会被替换为接口的实际类型参数）
+                DeclaredType mapperType = (DeclaredType) typeElement.asType();
+                TypeElement objectElement = elementUtils.getTypeElement(Object.class.getCanonicalName());
+
+                elementUtils.getAllMembers(typeElement)
                     .stream()
                     .filter(e -> e.getKind() == ElementKind.METHOD)
                     .map(e -> (ExecutableElement) e)
                     .filter(e -> !(e.getModifiers().contains(Modifier.STATIC) || e.isDefault()))
-                    .map(e -> new MethodBuilder(typeUtils, elementUtils, messager, mapperClassName, e))
+                    .filter(e -> objectElement == null || !objectElement.equals(e.getEnclosingElement()))
+                    .map(e -> new MethodBuilder(typeUtils, elementUtils, messager, mapperClassName, e,
+                        (ExecutableType) typeUtils.asMemberOf(mapperType, e)))
                     .map(MethodBuilder::build)
                     .forEach(builder::addMethod);
 
@@ -129,7 +156,11 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
 
                 // 静态引用
                 for (String staticImport : beanMapper.staticImports()) {
-                    if (StringHelper.isEmpty(staticImport)) throw new IllegalStateException("Static Import is empty");
+                    if (StringHelper.isEmpty(staticImport)) {
+                        String msg = "Static Import is empty";
+                        messager.printMessage(Diagnostic.Kind.ERROR, msg);
+                        throw new IllegalStateException(msg);
+                    }
                     builder.addStaticImport(staticImport);
                 }
 
@@ -137,8 +168,22 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
                 javaFile.writeTo(filer);
             });
 
-        messager.printMessage(Diagnostic.Kind.NOTE, "Finished BeanMapperAnnotationProcessor...");
         return true;
+    }
+
+    /**
+     * 构造参数化的父接口类型名称，例如 {@code BaseMapper<BookPo, BookUpdate>}
+     */
+    private TypeName superInterfaceName(TypeElement typeElement) {
+        List<? extends TypeParameterElement> typeParameters = typeElement.getTypeParameters();
+        if (typeParameters.isEmpty()) {
+            return ClassName.of(typeElement);
+        }
+        List<TypeName> typeArguments = new ArrayList<>();
+        for (TypeParameterElement typeParameter : typeParameters) {
+            typeArguments.add(TypeVariableName.of(typeParameter.getSimpleName().toString()));
+        }
+        return ParameterizedTypeName.of(ClassName.of(typeElement), typeArguments);
     }
 
     FieldSpec buildAutowiredBeanField(AutowiredBean autowiredBean) {
@@ -146,9 +191,16 @@ public class BeanMapperAnnotationProcessor extends AbstractProcessor {
         String fieldName = StringHelper.isNotBlank(autowiredBean.fieldName()) ? autowiredBean.fieldName()
             : StringHelper.unCapitalize(className.simpleName());
         FieldSpec.Builder builder = FieldSpec.builder(className, fieldName, Modifier.PRIVATE);
-        builder.addAnnotation(Autowired.class);
-        for (String qualifier : autowiredBean.qualifier()) {
-            builder.addAnnotation(AnnotationInstanceSpec.builder(Qualifier.class).addMember("value", qualifier).build());
+        builder.addAnnotation(AnnotationInstanceSpec.builder(SPRING_AUTOWIRED).build());
+        String[] qualifiers = autowiredBean.qualifier();
+        if (qualifiers.length > 1) {
+            // Spring的@Qualifier不是可重复注解，同一字段上生成多个@Qualifier会导致编译失败
+            String msg = String.format("The autowired bean(%s) can't be annotated with more than one @Qualifier.", autowiredBean.type());
+            messager.printMessage(Diagnostic.Kind.ERROR, msg);
+            throw new IllegalStateException(msg);
+        }
+        for (String qualifier : qualifiers) {
+            builder.addAnnotation(AnnotationInstanceSpec.builder(SPRING_QUALIFIER).addMember("value", qualifier).build());
         }
         return builder.build();
 

@@ -28,6 +28,10 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotBlank;
 public class DefaultImplClassPackageGenerator implements Function<String,String> {
     @Override
     public String apply(String mapperClassPackage) {
+        // 默认包中的mapper，实现类生成在impl包中
+        if (mapperClassPackage != null && mapperClassPackage.isEmpty()) {
+            return "impl";
+        }
         return argNotBlank(mapperClassPackage,"mapperClassPackage" )+".impl";
     }
 }

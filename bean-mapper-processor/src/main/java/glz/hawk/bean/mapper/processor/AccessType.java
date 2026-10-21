@@ -21,7 +21,7 @@ package glz.hawk.bean.mapper.processor;
  * @author Hawk
  */
 public enum AccessType {
-    PUBLIC_FIEld(1),
+    PUBLIC_FIELD(1),
     PUBLIC_METHOD(0),
     NO_ACCESS(2);
 

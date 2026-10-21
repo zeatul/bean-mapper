@@ -1,0 +1,28 @@
+plugins {
+    id 'buildlogic.java-platform-conventions'
+}
+
+description = 'Bill of Materials for Bean Mapper modules'
+
+// The BOM version comes from gradle.properties (rootProject.version).
+// Dynamically discover all subprojects from settings.gradle, excluding BOM/sample/test projects themselves.
+def beanMapperModules = rootProject.subprojects
+    .findAll { !it.name.endsWith('-bom') && !it.name.endsWith('-sample') && !it.name.endsWith('-integration-test') }
+    .collect { it.name }
+    .sort()
+
+publishing {
+    publications {
+        // Only the bean-mapper-* modules published by this project.
+        beanMapperBom(MavenPublication) {
+            artifactId = 'bean-mapper-bom'
+
+            def constraints = beanMapperModules.collect { module ->
+                [group: project.group.toString(), artifactId: module, version: 'bean-mapper.version', versionValue: version.toString()]
+            }
+            def propertiesMap = ['bean-mapper.version': version.toString()]
+
+            writeDependencyManagement(pom, [constraints: constraints, propertiesMap: propertiesMap])
+        }
+    }
+}

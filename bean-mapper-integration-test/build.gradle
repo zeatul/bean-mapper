@@ -1,0 +1,44 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+description = 'Integration tests for bean-mapper: compiles generated code and verifies runtime behavior'
+
+// Use Java 17 for test code (text blocks support)
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+}
+
+dependencies {
+    implementation project(':bean-mapper-annotations')
+    implementation project(':bean-mapper-processor')
+
+    // Spring for component model tests
+    implementation 'org.springframework:spring-context'
+
+    // CDI/JSR330 annotations for component model tests
+    testImplementation 'jakarta.inject:jakarta.inject-api'
+    testImplementation 'javax.inject:javax.inject'
+    testImplementation 'jakarta.enterprise:jakarta.enterprise.cdi-api'
+
+    // Test dependencies
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+
+    // For compiling generated code at runtime
+    testImplementation 'org.apache.commons:commons-lang3'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    // Increase heap for compilation tasks
+    maxHeapSize = '1g'
+}

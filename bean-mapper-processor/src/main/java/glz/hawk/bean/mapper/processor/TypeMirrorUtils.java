@@ -156,10 +156,24 @@ abstract class TypeMirrorUtils {
         }
     }
 
-    public static MapMirror getMapMirror(Types typeUtils, TypeMirror typeMirror) {
-        DeclaredType declaredMapType = (DeclaredType) typeMirror;
-        List<? extends TypeMirror> typeArguments = declaredMapType.getTypeArguments();
-        return new MapMirror(typeArguments.get(0), typeArguments.get(1));
+    public static MapMirror getMapMirror(Types typeUtils, Elements elementUtils, TypeMirror typeMirror) {
+        if (typeMirror.getKind() == TypeKind.DECLARED) {
+            List<? extends TypeMirror> typeArguments = ((DeclaredType) typeMirror).getTypeArguments();
+            if (typeArguments.size() == 2) {
+                return new MapMirror(typeArguments.get(0), typeArguments.get(1));
+            }
+        }
+        // 类型变量或raw类型无法确定类型参数，按Object处理
+        TypeMirror objectMirror = objectTypeMirror(elementUtils);
+        return new MapMirror(objectMirror, objectMirror);
+    }
+
+    private static TypeMirror objectTypeMirror(Elements elementUtils) {
+        TypeElement objectElement = elementUtils.getTypeElement(Object.class.getCanonicalName());
+        if (objectElement == null) {
+            throw new IllegalStateException("Can't find java.lang.Object");
+        }
+        return objectElement.asType();
     }
 
     public static boolean isArray(TypeMirror typeMirror) {
@@ -208,18 +222,33 @@ abstract class TypeMirrorUtils {
         return booleanFunction.apply(te);
     }
 
-    static TypeMirror elementTypeMirror(TypeMirror typeMirror) {
+    static TypeMirror elementTypeMirror(TypeMirror typeMirror, Types typeUtils, Elements elementUtils) {
         switch (typeMirror.getKind()) {
             case ARRAY:
                 return ((ArrayType) typeMirror).getComponentType();
             case DECLARED:
-                return ((DeclaredType) typeMirror).getTypeArguments().get(0);
+                List<? extends TypeMirror> typeArguments = ((DeclaredType) typeMirror).getTypeArguments();
+                if (!typeArguments.isEmpty()) {
+                    TypeMirror elementType = typeArguments.get(0);
+                    // 如果元素类型是类型变量，无法确定具体元素类型
+                    if (elementType.getKind() == TypeKind.TYPEVAR) {
+                        throw new IllegalStateException(String.format(
+                            "The element type of %s is a type variable, can't determine the concrete element type. " +
+                            "Please use a concrete type or a parameterized type with concrete type arguments.", typeMirror));
+                    }
+                    return elementType;
+                }
+                throw new IllegalStateException(String.format("The typeMirror(%s) is a raw type, can't determine the element type.", typeMirror));
+            case TYPEVAR:
+                throw new IllegalStateException(String.format(
+                    "The typeMirror(%s) is a type variable, can't determine the element type. " +
+                    "Please use a concrete collection or array type.", typeMirror));
             default:
-                throw new IllegalStateException(String.format("The typeMirror() isn't a collection or array."));
+                throw new IllegalStateException(String.format("The typeMirror(%s) isn't a collection or array.", typeMirror));
         }
     }
 
-    static TypeMirror rawTypeMirror(TypeMirror typeMirror,Types typeUtils){
+    static TypeMirror rawTypeMirror(TypeMirror typeMirror, Types typeUtils) {
         if (typeMirror.getKind() != TypeKind.DECLARED){
             throw new IllegalArgumentException(String.format("The typeMirror(%s) is not a class",typeMirror ));
         }

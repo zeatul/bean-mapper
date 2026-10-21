@@ -1,0 +1,13 @@
+[versions]
+hawkDependenciesBom = "1.2.0"
+hawkFrameworkBom = "1.2.0"
+codepoetBom = "1.2.0"
+nmcpAggregation = "1.2.0"
+
+[libraries]
+hawk-dependencies-bom = { group = "io.github.zeatul", name = "hawk-dependencies-bom", version.ref = "hawkDependenciesBom" }
+hawk-framework-bom = { group = "io.github.zeatul", name = "hawk-framework-bom", version.ref = "hawkFrameworkBom" }
+codepoet-bom = { group = "io.github.zeatul", name = "codepoet-bom", version.ref = "codepoetBom" }
+
+[plugins]
+nmcp-aggregation = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcpAggregation" }

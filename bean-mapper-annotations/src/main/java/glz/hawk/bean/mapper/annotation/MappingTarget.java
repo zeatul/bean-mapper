@@ -23,12 +23,13 @@ import java.lang.annotation.*;
  * This annotation is responsible for providing some mapping rules.
  * <p>Only one parameter can be annotated by {@link MappingTarget}.</p>
  * <p>The parameter annotated by {@link MappingTarget} shouldn't be annotated by {@link MappingSource}.</p>
+ * <p>It can only be annotated on a method parameter, annotating it on a method is not supported.</p>
  *
  * @author Zhang Peng
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.PARAMETER, ElementType.METHOD})
+@Target({ElementType.PARAMETER})
 public @interface MappingTarget {
 
     /**

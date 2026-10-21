@@ -2,20 +2,30 @@ plugins {
     id 'buildlogic.java-library-conventions'
 }
 
+description = 'This project provides some samples for bean mapper'
+
+// Sample requires Java 17+ for Spring Framework 6.x
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 dependencies {
     implementation 'org.springframework:spring-context'
     implementation project(':bean-mapper-annotations')
     annotationProcessor project(':bean-mapper-processor')
+
+    // Test dependencies for behavior verification
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
 }
 
-description = 'This project provides some samples for bean mapper'
-
-//compileJava {
-//    options.compilerArgs << '-processor' << 'lombok.launch.AnnotationProcessorHider$AnnotationProcessor,org.mapstruct.ap.MappingProcessor'
-//}
-
+// Don't delete
 compileJava {
-      // enable remote debug
+    // enable remote debug
 //    options.fork = true
 //    options.forkOptions.jvmArgs += ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=9000']
 //    options.debug = true

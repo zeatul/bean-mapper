@@ -31,6 +31,7 @@ import javax.tools.Diagnostic;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static glz.hawkframework.core.helper.StringHelper.unCapitalize;
 
@@ -73,18 +74,18 @@ class ParamDescriptor implements Comparable<ParamDescriptor> {
     /**
      * parse the return type of method
      */
-    ParamDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, ExecutableElement methodElement) {
+    ParamDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, ExecutableElement methodElement, Set<String> reservedNames, TypeMirror typeMirror) {
         this.typeUtils = typeUtils;
         this.elementUtils = elementUtils;
         this.messager = messager;
         this.mappingSource = null;
         this.mappingTarget = methodElement.getAnnotation(MappingTarget.class);
-        this.typeMirror = methodElement.getReturnType();
+        this.typeMirror = typeMirror;
         this.methodFullPath = String.join("/", interfaceName, methodName);
         this.paramFullPath = "methodReturn";
 
         parseTypeMirror(typeMirror, this.paramFullPath);
-        this.paramName = returnObjectName();
+        this.paramName = returnObjectName(reservedNames);
         this.index = 0;
         this.definedByReturnType = true;
 
@@ -94,12 +95,12 @@ class ParamDescriptor implements Comparable<ParamDescriptor> {
     /**
      * parse the parameter of method
      */
-    ParamDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, VariableElement parameterElement, int index, String parentFullPath) {
+    ParamDescriptor(Types typeUtils, Elements elementUtils, Messager messager, String interfaceName, String methodName, VariableElement parameterElement, int index, String parentFullPath, TypeMirror typeMirror) {
         this.typeUtils = typeUtils;
         this.elementUtils = elementUtils;
         this.messager = messager;
         this.paramName = parameterElement.getSimpleName().toString();
-        this.typeMirror = parameterElement.asType();
+        this.typeMirror = typeMirror;
         this.index = index;
         this.definedByReturnType = false;
         this.methodFullPath = String.join("/", interfaceName, methodName);
@@ -114,16 +115,25 @@ class ParamDescriptor implements Comparable<ParamDescriptor> {
         }
     }
 
-    private String returnObjectName() {
+    private String returnObjectName(Set<String> reservedNames) {
+        String name;
         if (mappingTarget != null && !StringHelper.isBlank(mappingTarget.returnObjectName())) {
-            return mappingTarget.returnObjectName();
+            name = mappingTarget.returnObjectName();
         } else if (typeMirror.getKind() == TypeKind.DECLARED) {
-            return StringHelper.unCapitalize(typeUtils.asElement(typeMirror).getSimpleName().toString());
+            name = StringHelper.unCapitalize(typeUtils.asElement(typeMirror).getSimpleName().toString());
         } else if (typeMirror.getKind() == TypeKind.ARRAY) {
-            return "array";
+            name = "array";
         } else {
-            return "returnValue";
+            name = "returnValue";
         }
+        // 避开参数名，避免生成代码中的变量名冲突
+        String result = name;
+        int i = 1;
+        while (reservedNames.contains(result)) {
+            result = name + i;
+            i++;
+        }
+        return result;
     }
 
 
@@ -178,8 +188,8 @@ class ParamDescriptor implements Comparable<ParamDescriptor> {
                     String propertyName = e.getSimpleName().toString();
                     TypeMirror fieldTypeMirror = e.asType();
                     PropertyDescriptor propertyDescriptor = propertyDescriptorMap.computeIfAbsent(propertyName, p -> new PropertyDescriptor(parentFullPath, p));
-                    propertyDescriptor.add(new GetterDescriptor(propertyName, AccessType.PUBLIC_FIEld, fieldTypeMirror));
-                    propertyDescriptor.add(new SetterDescriptor(propertyName, AccessType.PUBLIC_FIEld, fieldTypeMirror));
+                    propertyDescriptor.add(new GetterDescriptor(propertyName, AccessType.PUBLIC_FIELD, fieldTypeMirror));
+                    propertyDescriptor.add(new SetterDescriptor(propertyName, AccessType.PUBLIC_FIELD, fieldTypeMirror));
                 });
 
             typeMirror = typeElement.getSuperclass();
@@ -201,7 +211,8 @@ class ParamDescriptor implements Comparable<ParamDescriptor> {
         return e.getKind() == ElementKind.METHOD &&
             e.getModifiers().contains(Modifier.PUBLIC) &&
             ((ExecutableElement) e).getParameters().isEmpty() &&
-            (methodName.startsWith("get") || methodName.startsWith("is"));
+            (methodName.startsWith("get") || methodName.startsWith("is")) &&
+            !"getClass".equals(methodName);
     }
 
     private boolean isSetter(Element e) {
